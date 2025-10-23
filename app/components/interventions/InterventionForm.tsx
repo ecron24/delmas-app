@@ -8,6 +8,7 @@ import { InterventionTypeSelector } from './InterventionTypeSelector';
 import { TaskTemplateSelector } from './TaskTemplateSelector';
 import { PoolSelector } from '../pools/PoolSelector';
 import { PoolForm } from '../pools/PoolForm';
+import { PhotoCapture } from './PhotoCapture';
 
 type Client = {
   id?: string;
@@ -35,6 +36,7 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
   const [error, setError] = useState('');
   const [technicians, setTechnicians] = useState<any[]>([]);
   const [loadingTechnicians, setLoadingTechnicians] = useState(true);
+  const [photos, setPhotos] = useState<File[]>([]);
 
   const [clientData, setClientData] = useState<Client>({
     type: existingClient?.type || 'particulier',
@@ -114,6 +116,47 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
         labor_hours: '',
         labor_rate: '',
       });
+    }
+  };
+
+  const uploadPhotos = async (interventionId: string, photoFiles: File[]) => {
+    const supabase = createClient();
+    let successCount = 0;
+
+    for (const photo of photoFiles) {
+      try {
+        // Upload vers Storage
+        const fileName = `${interventionId}/${Date.now()}-${photo.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('intervention-photos')
+          .upload(fileName, photo);
+
+        if (uploadError) throw uploadError;
+
+        // Récupérer l'URL publique
+        const { data: { publicUrl } } = supabase.storage
+          .from('intervention-photos')
+          .getPublicUrl(fileName);
+
+        // Enregistrer dans la table
+        await supabase
+          .schema('piscine_delmas_public')
+          .from('intervention_photos')
+          .insert({
+            intervention_id: interventionId,
+            photo_url: publicUrl,
+            caption: photo.name,
+          });
+
+        successCount++;
+      } catch (error) {
+        console.error(`❌ Erreur upload ${photo.name}:`, error);
+        // Continue avec les autres photos
+      }
+    }
+
+    if (successCount > 0) {
+      console.log(`✅ ${successCount}/${photoFiles.length} photo(s) uploadée(s)`);
     }
   };
 
@@ -202,6 +245,11 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
 
       if (interventionError) throw interventionError;
 
+      // Upload des photos
+      if (photos.length > 0) {
+        await uploadPhotos(newIntervention.id, photos);
+      }
+
       const typesData = interventionData.intervention_types.map(type => ({
         intervention_id: newIntervention.id,
         intervention_type: type,
@@ -260,6 +308,7 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
         </div>
       )}
 
+      {/* SECTION CLIENT */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
           👤 Informations Client
@@ -456,6 +505,7 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
         </div>
       </div>
 
+      {/* SECTION PISCINE */}
       <div className="space-y-4 pt-6 border-t-2 border-gray-200">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -573,6 +623,7 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
         )}
       </div>
 
+      {/* SECTION INTERVENTION */}
       <div className="space-y-4 pt-6 border-t-2 border-gray-200">
         <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
           🔧 Détails de l'intervention
@@ -798,6 +849,12 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
         </div>
       </div>
 
+      {/* SECTION PHOTOS */}
+      <div className="pt-6 border-t-2 border-gray-200">
+        <PhotoCapture onPhotosChange={setPhotos} />
+      </div>
+
+      {/* BOUTON SUBMIT */}
       <div className="pt-6">
         <button
           type="submit"

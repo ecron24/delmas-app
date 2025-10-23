@@ -218,78 +218,81 @@ export default function InterventionsPage() {
   }
 
   return (
-    <div className="space-y-4 pb-20">
-      {/* HEADER - MOBILE OPTIMISÉ */}
-      <div className="space-y-3">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">📋 Interventions</h1>
-
+    <div className="space-y-6">
+      {/* HEADER */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">📋 Interventions</h1>
+          <p className="text-gray-500 mt-1">Gérez vos interventions et suivez leur avancement</p>
+        </div>
         <button
           onClick={() => router.push('/dashboard/interventions/new')}
-          className="w-full sm:w-auto px-6 py-4 bg-secondary text-white rounded-xl font-bold hover:bg-secondary-dark transition-all shadow-lg flex items-center justify-center gap-2 text-lg"
+          className="px-6 py-3 bg-secondary text-white rounded-xl font-bold hover:bg-secondary-dark transition-all shadow-lg flex items-center gap-2"
         >
           ➕ Nouvelle intervention
         </button>
       </div>
 
-      {/* STATS CARDS - GRILLE 2x2 MOBILE */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* STATS CARDS - NOUVELLE VERSION */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Aujourd'hui */}
-        <div className="bg-white rounded-lg p-4 border-2 border-primary shadow-sm">
-          <div className="flex flex-col items-center text-center">
-            <Calendar className="w-8 h-8 text-primary mb-2" />
-            <span className={`text-3xl font-bold text-primary mb-1 ${stats.todayCount > 0 ? 'animate-pulse' : ''}`}>
+        <div className="bg-white rounded-xl p-6 border-2 border-primary shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <Calendar className="w-8 h-8 text-primary" />
+            <span className={`text-3xl font-bold text-primary ${stats.todayCount > 0 ? 'animate-pulse' : ''}`}>
               {stats.todayCount}
             </span>
-            <p className="text-xs font-semibold text-gray-900">Aujourd'hui</p>
           </div>
+          <p className="text-sm font-semibold text-gray-900">Aujourd'hui</p>
+          <p className="text-xs text-gray-500 mt-1">intervention(s) planifiée(s)</p>
         </div>
 
         {/* Cette semaine */}
-        <div className="bg-white rounded-lg p-4 border-2 border-primary shadow-sm">
-          <div className="flex flex-col items-center text-center">
-            <TrendingUp className="w-8 h-8 text-primary mb-2" />
-            <span className="text-3xl font-bold text-primary mb-1">{stats.weekCount}</span>
-            <p className="text-xs font-semibold text-gray-900">Cette semaine</p>
+        <div className="bg-white rounded-xl p-6 border-2 border-primary shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <TrendingUp className="w-8 h-8 text-primary" />
+            <span className="text-3xl font-bold text-primary">{stats.weekCount}</span>
           </div>
+          <p className="text-sm font-semibold text-gray-900">Cette semaine</p>
+          <p className="text-xs text-gray-500 mt-1">intervention(s) total</p>
         </div>
 
         {/* En cours */}
-        <div className="bg-white rounded-lg p-4 border-2 border-primary shadow-sm">
-          <div className="flex flex-col items-center text-center">
-            <Clock className="w-8 h-8 text-primary mb-2" />
-            <span className={`text-3xl font-bold text-primary mb-1 ${stats.inProgressCount > 0 ? 'animate-pulse' : ''}`}>
+        <div className="bg-white rounded-xl p-6 border-2 border-primary shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <Clock className="w-8 h-8 text-primary" />
+            <span className={`text-3xl font-bold text-primary ${stats.inProgressCount > 0 ? 'animate-pulse' : ''}`}>
               {stats.inProgressCount}
             </span>
-            <p className="text-xs font-semibold text-gray-900">En cours</p>
           </div>
+          <p className="text-sm font-semibold text-gray-900">En cours</p>
+          <p className="text-xs text-gray-500 mt-1">intervention(s) active(s)</p>
         </div>
 
         {/* CA semaine */}
-        <div className="bg-white rounded-lg p-4 border-2 border-primary shadow-sm">
-          <div className="flex flex-col items-center text-center">
-            <span className="text-2xl mb-2">💰</span>
-            <span className="text-2xl md:text-3xl font-bold text-primary mb-1">
-              {stats.weekRevenue.toFixed(0)}€
-            </span>
-            <p className="text-xs font-semibold text-gray-900">CA semaine</p>
+        <div className="bg-white rounded-xl p-6 border-2 border-primary shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-2xl">💰</span>
+            <span className="text-3xl font-bold text-primary">{stats.weekRevenue.toFixed(0)}€</span>
           </div>
+          <p className="text-sm font-semibold text-gray-900">CA semaine</p>
+          <p className="text-xs text-gray-500 mt-1">chiffre d'affaires réalisé</p>
         </div>
       </div>
 
-      {/* ONGLETS - VERSION MOBILE */}
+      {/* ONGLETS */}
       <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 overflow-hidden">
         <div className="border-b-2 border-gray-200 flex">
           <button
             onClick={() => setActiveTab('planning')}
-            className={`flex-1 py-3 px-2 text-sm font-bold transition-colors relative ${
+            className={`flex-1 py-4 px-6 font-bold transition-colors relative ${
               activeTab === 'planning'
                 ? 'bg-blue-50 text-secondary'
-                : 'text-gray-600'
+                : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            <span className="flex flex-col items-center gap-1">
-              <span>📅</span>
-              <span className="hidden sm:inline">Planning</span>
+            <span className="flex items-center justify-center gap-2">
+              📅 Planning
               {(todayInterventions.length + tomorrowInterventions.length + upcomingInterventions.length) > 0 && (
                 <span className="bg-secondary text-white text-xs font-bold px-2 py-0.5 rounded-full">
                   {todayInterventions.length + tomorrowInterventions.length + upcomingInterventions.length}
@@ -303,15 +306,14 @@ export default function InterventionsPage() {
 
           <button
             onClick={() => setActiveTab('inprogress')}
-            className={`flex-1 py-3 px-2 text-sm font-bold transition-colors relative ${
+            className={`flex-1 py-4 px-6 font-bold transition-colors relative ${
               activeTab === 'inprogress'
                 ? 'bg-orange-50 text-orange-600'
-                : 'text-gray-600'
+                : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            <span className="flex flex-col items-center gap-1">
-              <span>⏳</span>
-              <span className="hidden sm:inline">En cours</span>
+            <span className="flex items-center justify-center gap-2">
+              ⏳ En cours
               {stats.inProgressCount > 0 && (
                 <span className="bg-orange-600 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
                   {stats.inProgressCount}
@@ -325,15 +327,14 @@ export default function InterventionsPage() {
 
           <button
             onClick={() => setActiveTab('unpaid')}
-            className={`flex-1 py-3 px-2 text-sm font-bold transition-colors relative ${
+            className={`flex-1 py-4 px-6 font-bold transition-colors relative ${
               activeTab === 'unpaid'
                 ? 'bg-yellow-50 text-yellow-600'
-                : 'text-gray-600'
+                : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            <span className="flex flex-col items-center gap-1">
-              <span>💰</span>
-              <span className="hidden sm:inline">Impayés</span>
+            <span className="flex items-center justify-center gap-2">
+              💰 Impayés
               {stats.unpaidCount > 0 && (
                 <span className="bg-yellow-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                   {stats.unpaidCount}
@@ -346,26 +347,28 @@ export default function InterventionsPage() {
           </button>
         </div>
 
-        {/* CONTENU - MOBILE FRIENDLY */}
-        <div className="p-3 sm:p-6">
+        {/* CONTENU DES ONGLETS */}
+        <div className="p-6">
           {activeTab === 'planning' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* AUJOURD'HUI */}
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base sm:text-lg font-bold text-gray-900">🔥 Aujourd'hui</h2>
-                  <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-bold">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    🔥 Aujourd'hui
+                  </h2>
+                  <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-bold">
                     {todayInterventions.length}
                   </span>
                 </div>
 
                 {todayInterventions.length === 0 ? (
-                  <div className="text-center py-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                    <p className="text-3xl mb-2">✅</p>
-                    <p className="text-sm text-gray-600">Aucune intervention aujourd'hui</p>
+                  <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                    <p className="text-4xl mb-2">✅</p>
+                    <p className="text-gray-600">Aucune intervention aujourd'hui</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {todayInterventions.map((intervention) => (
                       <InterventionCard key={intervention.id} intervention={intervention} />
                     ))}
@@ -375,14 +378,16 @@ export default function InterventionsPage() {
 
               {/* DEMAIN */}
               {tomorrowInterventions.length > 0 && (
-                <div className="pt-4 border-t-2 border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-base sm:text-lg font-bold text-gray-900">⏭️ Demain</h2>
-                    <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-bold">
+                <div className="pt-6 border-t-2 border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      ⏭️ Demain
+                    </h2>
+                    <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-bold">
                       {tomorrowInterventions.length}
                     </span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {tomorrowInterventions.map((intervention) => (
                       <InterventionCard key={intervention.id} intervention={intervention} />
                     ))}
@@ -390,19 +395,21 @@ export default function InterventionsPage() {
                 </div>
               )}
 
-              {/* PROCHAINES */}
+              {/* PROCHAINES (7 jours) */}
               {upcomingInterventions.length > 0 && (
-                <div className="pt-4 border-t-2 border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-base sm:text-lg font-bold text-gray-900">📆 Prochainement</h2>
+                <div className="pt-6 border-t-2 border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      📆 Prochainement (7 jours)
+                    </h2>
                     <button
                       onClick={() => router.push('/dashboard/calendar')}
-                      className="text-xs sm:text-sm text-secondary font-semibold"
+                      className="text-sm text-secondary hover:text-secondary-dark font-semibold flex items-center gap-1"
                     >
-                      Calendrier →
+                      Voir calendrier →
                     </button>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {upcomingInterventions.map((intervention) => (
                       <InterventionCard key={intervention.id} intervention={intervention} />
                     ))}
@@ -413,10 +420,10 @@ export default function InterventionsPage() {
               {todayInterventions.length === 0 &&
                tomorrowInterventions.length === 0 &&
                upcomingInterventions.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-4xl mb-3">📭</p>
-                  <p className="text-lg font-bold text-gray-900 mb-2">Aucune intervention</p>
-                  <p className="text-sm text-gray-500 mb-4">Créez votre première intervention</p>
+                <div className="text-center py-12">
+                  <p className="text-5xl mb-4">📭</p>
+                  <p className="text-xl font-bold text-gray-900 mb-2">Aucune intervention planifiée</p>
+                  <p className="text-gray-500 mb-6">Créez votre première intervention pour commencer</p>
                   <button
                     onClick={() => router.push('/dashboard/interventions/new')}
                     className="px-6 py-3 bg-secondary text-white rounded-xl font-bold hover:bg-secondary-dark transition-colors shadow-lg"
@@ -430,20 +437,25 @@ export default function InterventionsPage() {
 
           {activeTab === 'inprogress' && (
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base sm:text-lg font-bold text-gray-900">⏳ En cours</h2>
-                <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-bold">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  ⏳ Interventions en cours
+                </h2>
+                <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-bold">
                   {inProgressInterventions.length}
                 </span>
               </div>
 
               {inProgressInterventions.length === 0 ? (
-                <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                  <p className="text-3xl mb-2">✅</p>
-                  <p className="text-sm text-gray-600">Aucune intervention en cours</p>
+                <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                  <p className="text-4xl mb-2">✅</p>
+                  <p className="text-gray-600">Aucune intervention en cours</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Démarrez une intervention planifiée pour la voir ici
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {inProgressInterventions.map((intervention) => (
                     <InterventionCard key={intervention.id} intervention={intervention} />
                   ))}
@@ -454,20 +466,28 @@ export default function InterventionsPage() {
 
           {activeTab === 'unpaid' && (
             <div>
-              <div className="mb-3">
-                <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-1">💰 Impayés</h2>
-                <p className="text-xs sm:text-sm text-gray-500">
-                  Total : <span className="font-bold text-red-600">{stats.unpaidAmount.toFixed(2)}€</span>
-                </p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    💰 En attente de paiement
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Total impayé : <span className="font-bold text-red-600">{stats.unpaidAmount.toFixed(2)}€</span>
+                  </p>
+                </div>
+                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-bold">
+                  {unpaidInvoices.length}
+                </span>
               </div>
 
               {unpaidInvoices.length === 0 ? (
-                <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                  <p className="text-3xl mb-2">✅</p>
-                  <p className="text-sm text-gray-600">Tous les paiements sont à jour</p>
+                <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                  <p className="text-4xl mb-2">✅</p>
+                  <p className="text-gray-600">Tous les paiements sont à jour</p>
+                  <p className="text-sm text-gray-500 mt-2">Aucune facture en attente de paiement</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {unpaidInvoices.map((invoice) => {
                     const intervention = invoice.intervention;
                     const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
@@ -482,54 +502,73 @@ export default function InterventionsPage() {
                     return (
                       <div
                         key={invoice.intervention_id}
-                        className={`border-2 rounded-xl p-3 sm:p-4 ${
+                        className={`border-2 rounded-xl p-5 transition-colors ${
                           isOverdue
-                            ? 'bg-red-50 border-red-300'
-                            : 'bg-yellow-50 border-yellow-300'
+                            ? 'bg-red-50 border-red-300 hover:bg-red-100'
+                            : 'bg-yellow-50 border-yellow-300 hover:bg-yellow-100'
                         }`}
                       >
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
                               <button
                                 onClick={() => router.push(`/dashboard/interventions/${intervention.id}`)}
-                                className="font-bold text-gray-900 hover:text-secondary text-sm sm:text-base line-clamp-1"
+                                className="font-bold text-gray-900 hover:text-secondary text-lg"
                               >
                                 {clientName}
                               </button>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded border border-gray-300">
-                                  {invoice.invoice_number}
+                              <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded border border-gray-300">
+                                {invoice.invoice_number}
+                              </span>
+                              {isOverdue && (
+                                <span className="text-xs bg-red-600 text-white px-2 py-1 rounded font-bold animate-pulse">
+                                  ⚠️ RETARD
                                 </span>
-                                {isOverdue && (
-                                  <span className="text-xs bg-red-600 text-white px-2 py-0.5 rounded font-bold animate-pulse">
-                                    ⚠️ RETARD
-                                  </span>
-                                )}
-                              </div>
+                              )}
                             </div>
-                            <div className="text-right">
-                              <p className="text-xs text-gray-500 mb-1">Restant</p>
-                              <p className={`text-xl sm:text-2xl font-bold ${isOverdue ? 'text-red-600' : 'text-orange-600'}`}>
-                                {remainingAmount.toFixed(0)}€
+
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs text-gray-500">
+                                📅 Intervention : {new Date(intervention.scheduled_date).toLocaleDateString('fr-FR')}
+                              </span>
+                              <span className="text-xs text-gray-500">•</span>
+                              <span className="text-xs text-gray-500">
+                                📆 Échéance : {new Date(invoice.due_date).toLocaleDateString('fr-FR')}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {intervention.intervention_types_junction?.map((t: any, i: number) => (
+                                <span key={i} className="text-xs px-2 py-1 bg-yellow-100 rounded border border-yellow-200">
+                                  {t.intervention_type}
+                                </span>
+                              ))}
+                            </div>
+
+                            {intervention.description && (
+                              <p className="text-sm text-gray-600 line-clamp-1 mb-3">
+                                {intervention.description}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="text-right ml-4">
+                            <div className="mb-2">
+                              <p className="text-xs text-gray-500 mb-1">Restant dû</p>
+                              <p className={`text-3xl font-bold ${isOverdue ? 'text-red-600' : 'text-orange-600'}`}>
+                                {remainingAmount.toFixed(2)}€
                               </p>
                             </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/invoices/${invoice.intervention_id}/payment`);
+                              }}
+                              className="text-sm bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md w-full"
+                            >
+                              💳 Enregistrer paiement
+                            </button>
                           </div>
-
-                          <div className="text-xs text-gray-500 space-y-1">
-                            <div>📅 {new Date(intervention.scheduled_date).toLocaleDateString('fr-FR')}</div>
-                            <div>📆 Échéance : {new Date(invoice.due_date).toLocaleDateString('fr-FR')}</div>
-                          </div>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/dashboard/invoices/${invoice.intervention_id}/payment`);
-                            }}
-                            className="w-full text-sm bg-green-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md"
-                          >
-                            💳 Enregistrer paiement
-                          </button>
                         </div>
                       </div>
                     );

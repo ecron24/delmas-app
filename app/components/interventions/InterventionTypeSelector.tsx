@@ -1,21 +1,11 @@
 'use client';
 
+import { INTERVENTION_TYPE_CONFIG, InterventionType } from '@/lib/constants';
+
 type InterventionTypeSelectorProps = {
   selectedTypes: string[];
   onChange: (types: string[]) => void;
 };
-
-const INTERVENTION_TYPES = [
-  { value: 'maintenance', label: '🔧 Entretien', color: 'blue' },
-  { value: 'repair', label: '🛠️ Réparation', color: 'orange' },
-  { value: 'installation', label: '⚙️ Installation', color: 'purple' },
-  { value: 'emergency', label: '🚨 Urgence', color: 'red' },
-  { value: 'diagnostic', label: '🔍 Diagnostic', color: 'green' },
-  { value: 'cleaning', label: '🧹 Nettoyage', color: 'cyan' },
-  { value: 'winterization', label: '❄️ Hivernage', color: 'indigo' },
-  { value: 'startup', label: '🌊 Remise en service', color: 'teal' },
-  { value: 'other', label: '📋 Autre', color: 'gray' },
-];
 
 export function InterventionTypeSelector({ selectedTypes, onChange }: InterventionTypeSelectorProps) {
   const toggleType = (type: string) => {
@@ -26,10 +16,16 @@ export function InterventionTypeSelector({ selectedTypes, onChange }: Interventi
     }
   };
 
+  const types = Object.entries(INTERVENTION_TYPE_CONFIG).map(([value, config]) => ({
+    value,
+    label: `${config.emoji} ${config.label}`,
+    color: config.color,
+  }));
+
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-        {INTERVENTION_TYPES.map((type) => {
+        {types.map((type) => {
           const isSelected = selectedTypes.includes(type.value);
           return (
             <button

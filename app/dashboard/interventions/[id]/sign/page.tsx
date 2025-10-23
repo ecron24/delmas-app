@@ -39,16 +39,33 @@ export default function SignInterventionPage({ params }: { params: { id: string 
     try {
       const supabase = createClient();
 
-      await supabase
+      // 1️⃣ Marquer l'intervention comme "completed"
+      const { error } = await supabase
         .schema('piscine_delmas_public')
         .from('interventions')
         .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          client_present: true,
           client_signature_url: `Signé par: ${signatureText}`,
           client_signed_at: new Date().toISOString(),
         })
         .eq('id', params.id);
 
-      alert('✅ Signature enregistrée !');
+      if (error) throw error;
+
+      // 2️⃣ 🆕 Notifier Google Calendar
+      try {
+        await fetch(`/api/interventions/${params.id}/notify-completion`, {
+          method: 'POST',
+        });
+        console.log('✅ Google Calendar mis à jour');
+      } catch (err) {
+        console.warn('⚠️ Erreur mise à jour Google Calendar (non bloquant):', err);
+      }
+
+      // 3️⃣ Redirection
+      alert('✅ Signature enregistrée et intervention terminée !');
       router.push(`/dashboard/interventions/${params.id}`);
 
     } catch (error) {
@@ -119,7 +136,7 @@ export default function SignInterventionPage({ params }: { params: { id: string 
             disabled={saving}
             className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl font-bold shadow-lg hover:from-green-700 hover:to-green-600 transition-all disabled:opacity-50"
           >
-            {saving ? '⏳ Enregistrement...' : '✅ Valider'}
+            {saving ? '⏳ Enregistrement...' : '✅ Valider et terminer'}
           </button>
         </div>
       </div>

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { fromDelmas, createClient } from '@/lib/supabase/client'; // ✅ Importer les deux
 import { useRouter } from 'next/navigation';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
 
 type Intervention = {
   id: string;
@@ -10,22 +11,15 @@ type Intervention = {
   scheduled_date: string;
   status: string;
   gcal_event_id: string | null;
-  gcal_last_sync: string | null;
-  synced_to_gcal: boolean;
+  created_from?: 'app' | 'gcal';
   client: {
     first_name: string;
     last_name: string;
     company_name: string | null;
     type: string;
-  };
+  } | null;
   intervention_types_junction: Array<{ intervention_type: string }>;
-};
-
-type CalendarSettings = {
-  connected: boolean;
-  calendar_id: string;
-  sync_enabled: boolean;
-  last_sync: string | null;
+  description: string;
 };
 
 export default function CalendarPage() {
@@ -33,120 +27,76 @@ export default function CalendarPage() {
   const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [calendarSettings, setCalendarSettings] = useState<CalendarSettings | null>(null);
-  const [syncing, setSyncing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadInterventions();
-    loadCalendarSettings();
+
+    // 🔄 Synchro temps réel - CORRIGÉ
+    const supabase = createClient(); // ✅ Créer une instance du client
+
+    const subscription = supabase
+      .channel('interventions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'piscine_delmas_public', // ✅ Votre schéma
+          table: 'interventions'
+        },
+        (payload) => {
+          console.log('🔄 Changement détecté:', payload);
+
+          if (payload.eventType === 'INSERT') {
+            setSyncMessage('✅ Nouvelle intervention synchronisée');
+          } else if (payload.eventType === 'UPDATE') {
+            setSyncMessage('🔄 Intervention mise à jour');
+          } else if (payload.eventType === 'DELETE') {
+            setSyncMessage('🗑️ Intervention supprimée');
+          }
+
+          loadInterventions();
+
+          setTimeout(() => setSyncMessage(null), 3000);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [currentDate]);
 
-  const loadCalendarSettings = async () => {
-    const supabase = createClient();
-
-    try {
-      const { data, error } = await supabase
-        .schema('piscine_delmas_public')
-        .rpc('get_google_calendar_settings');
-
-      if (error) {
-        console.error('Erreur lors du chargement des settings:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        setCalendarSettings(data[0]);
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-    }
-  };
-
   const loadInterventions = async () => {
-    const supabase = createClient();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
 
-    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const formatDate = (y: number, m: number, d: number) => {
+      return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    };
 
-    const { data } = await supabase
-      .schema('piscine_delmas_public')
-      .from('interventions')
+    const startOfMonth = formatDate(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const endOfMonth = formatDate(year, month, lastDay);
+
+    const { data, error } = await fromDelmas('interventions')
       .select(`
         *,
         client:clients(first_name, last_name, company_name, type),
         intervention_types_junction(intervention_type)
       `)
-      .gte('scheduled_date', startOfMonth.toISOString().split('T')[0])
-      .lte('scheduled_date', endOfMonth.toISOString().split('T')[0])
+      .gte('scheduled_date', startOfMonth)
+      .lte('scheduled_date', endOfMonth)
       .order('scheduled_date');
+
+    console.log('✅ Interventions chargées:', data?.length || 0);
+    if (data && data.length > 0) {
+      console.log('📅 Exemple:', data[0].scheduled_date);
+    }
 
     setInterventions(data || []);
     setLoading(false);
-  };
-
-  const enableGoogleCalendar = async () => {
-    const supabase = createClient();
-
-    try {
-      const { error } = await supabase
-        .schema('piscine_delmas_public')
-        .from('settings')
-        .update({
-          value: {
-            connected: true,
-            calendar_id: 'stephanedelmas69@gmail.com',
-            sync_enabled: true,
-            last_sync: new Date().toISOString()
-          }
-        })
-        .eq('key', 'google_calendar');
-
-      if (error) {
-        console.error('Erreur lors de l\'activation:', error);
-        alert('❌ Erreur lors de l\'activation. Vérifiez la console.');
-        return;
-      }
-
-      await loadCalendarSettings();
-      alert('✅ Google Calendar activé ! Les interventions seront synchronisées automatiquement.');
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('❌ Une erreur est survenue.');
-    }
-  };
-
-  const forceSyncToGoogleCalendar = async () => {
-    setSyncing(true);
-
-    try {
-      const response = await fetch('https://n8n.oppsys.io/webhook/bc21a81a-6fdc-4fd7-926f-5d7c42c908c5', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'force_sync',
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Résultat de la sync:', result);
-        alert('✅ Synchronisation lancée ! Vérifiez Google Calendar dans quelques secondes.');
-        await loadInterventions();
-        await loadCalendarSettings();
-      } else {
-        const error = await response.text();
-        console.error('❌ Erreur de la réponse:', error);
-        throw new Error(`Erreur ${response.status}: ${error}`);
-      }
-    } catch (error) {
-      console.error('❌ Erreur de synchronisation:', error);
-      alert('❌ Erreur lors de la synchronisation. Vérifiez la console et la configuration n8n.');
-    } finally {
-      setSyncing(false);
-    }
   };
 
   const getDaysInMonth = () => {
@@ -168,9 +118,25 @@ export default function CalendarPage() {
   };
 
   const getInterventionsForDay = (day: number) => {
-    const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
-      .toISOString().split('T')[0];
-    return interventions.filter(i => i.scheduled_date === dateStr);
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    const result = interventions.filter(i => {
+      const interventionDate = i.scheduled_date.split(' ')[0].split('T')[0];
+      return interventionDate === dateStr;
+    });
+
+    return result;
+  };
+
+  const isToday = (day: number) => {
+    const today = new Date();
+    return (
+      day === today.getDate() &&
+      currentDate.getMonth() === today.getMonth() &&
+      currentDate.getFullYear() === today.getFullYear()
+    );
   };
 
   const previousMonth = () => {
@@ -181,238 +147,271 @@ export default function CalendarPage() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
   };
 
-  const monthNames = [
-    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-  ];
-
+  const monthName = currentDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  const days = getDaysInMonth();
+
+  const selectedInterventions = selectedDate
+    ? interventions.filter(i => {
+        const interventionDate = i.scheduled_date.split(' ')[0].split('T')[0];
+        return interventionDate === selectedDate;
+      })
+    : [];
+
+  const stats = {
+    total: interventions.length,
+    fromApp: interventions.filter(i => i.created_from === 'app' || !i.created_from).length,
+    fromGcal: interventions.filter(i => i.created_from === 'gcal').length,
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-secondary"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">📅 Calendrier</h1>
-        <div className="flex gap-3">
-          {/* Statut Google Calendar */}
-          {calendarSettings?.connected ? (
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border-2 border-green-200 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-semibold text-green-700">Google Calendar connecté</span>
-            </div>
-          ) : (
-            <button
-              onClick={enableGoogleCalendar}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              🔗 Connecter Google Calendar
-            </button>
-          )}
+    <div className="space-y-4">
+      {syncMessage && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-3 rounded-xl shadow-lg z-50 animate-bounce">
+          {syncMessage}
+        </div>
+      )}
 
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">📅 Calendrier</h1>
+        <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={() => router.push('/dashboard/interventions/new')}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+            className="flex-1 sm:flex-none px-3 py-2 md:px-4 md:py-2 bg-secondary text-white rounded-xl font-bold hover:bg-secondary-dark transition-all shadow-lg text-sm"
           >
-            ➕ Nouvelle intervention
+            ➕ <span className="hidden sm:inline">Intervention</span>
           </button>
         </div>
       </div>
 
-      {/* Barre de synchronisation */}
-      {calendarSettings?.connected && (
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-blue-900">Synchronisation automatique activée</p>
-              <p className="text-sm text-blue-700">
-                Les interventions sont synchronisées avec Google Calendar en temps réel
-              </p>
-              {calendarSettings.last_sync && (
-                <p className="text-xs text-blue-600 mt-1">
-                  Dernière sync: {new Date(calendarSettings.last_sync).toLocaleString('fr-FR')}
-                </p>
-              )}
-            </div>
-            <button
-              onClick={forceSyncToGoogleCalendar}
-              disabled={syncing}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {syncing ? (
-                <span className="flex items-center gap-2">
-                  <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Synchronisation...
-                </span>
-              ) : (
-                '🔄 Forcer la synchronisation'
-              )}
-            </button>
+      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <CalendarIcon className="w-5 h-5 text-blue-600" />
           </div>
-
-          {/* Statistiques de sync */}
-          <div className="mt-4 grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg p-3 border border-blue-200">
-              <p className="text-xs text-gray-600">Interventions totales</p>
-              <p className="text-2xl font-bold text-blue-900">{interventions.length}</p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-blue-200">
-              <p className="text-xs text-gray-600">Synchronisées</p>
-              <p className="text-2xl font-bold text-green-600">
-                {interventions.filter(i => i.synced_to_gcal).length}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-blue-200">
-              <p className="text-xs text-gray-600">En attente</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {interventions.filter(i => !i.synced_to_gcal).length}
-              </p>
-            </div>
+          <div>
+            <p className="font-bold text-gray-900">Interventions du mois</p>
+            <p className="text-xs text-gray-500">Vue calendrier complète</p>
           </div>
         </div>
-      )}
 
-      {/* Navigation mois */}
-      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="grid grid-cols-3 gap-2 md:gap-4">
+          <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+            <p className="text-xs text-gray-600 mb-1">Total</p>
+            <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+            <p className="text-xs text-gray-600 mb-1">Créées ici</p>
+            <p className="text-2xl font-bold text-green-600">{stats.fromApp}</p>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+            <p className="text-xs text-gray-600 mb-1">Depuis Google</p>
+            <p className="text-2xl font-bold text-purple-600">{stats.fromGcal}</p>
+          </div>
+        </div>
+
+        {stats.fromGcal > 0 && (
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded mt-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-semibold mb-1">
+                  {stats.fromGcal} intervention{stats.fromGcal > 1 ? 's importées' : ' importée'} depuis Google Calendar
+                </p>
+                <p className="text-xs text-blue-700">
+                  Les événements créés dans Google Calendar sont automatiquement importés dans l'application.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between p-3 md:p-4 border-b-2 border-gray-200 bg-primary">
           <button
             onClick={previousMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
           </button>
 
-          <h2 className="text-xl font-bold text-gray-900">
-            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+          <h2 className="text-base md:text-xl font-bold text-white capitalize">
+            {monthName}
           </h2>
 
           <button
             onClick={nextMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
           </button>
         </div>
 
-        {/* Grille calendrier */}
-        <div className="grid grid-cols-7 gap-2">
-          {/* Jours de la semaine */}
-          {dayNames.map(day => (
-            <div key={day} className="text-center text-xs font-bold text-gray-500 py-2">
+        <div className="grid grid-cols-7 border-b-2 border-gray-200 bg-gray-50">
+          {dayNames.map((day) => (
+            <div key={day} className="text-center py-2 text-xs font-bold text-gray-600">
               {day}
             </div>
           ))}
+        </div>
 
-          {/* Jours du mois */}
-          {getDaysInMonth().map((day, index) => {
+        <div className="grid grid-cols-7 overflow-x-auto">
+          {days.map((day, index) => {
             if (day === null) {
-              return <div key={`empty-${index}`} className="aspect-square" />;
+              return <div key={`empty-${index}`} className="min-h-24 border border-gray-100 bg-gray-50"></div>;
             }
 
             const dayInterventions = getInterventionsForDay(day);
-            const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
             return (
-              <div
+              <button
                 key={day}
-                className={`aspect-square border-2 rounded-lg p-1 ${
-                  isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'
-                }`}
+                onClick={() => setSelectedDate(dateStr)}
+                className={`min-h-24 border border-gray-100 p-1.5 transition-colors relative text-left w-full ${
+                  isToday(day) ? 'bg-blue-50 border-secondary' : 'hover:bg-gray-50'
+                } ${selectedDate === dateStr ? 'ring-2 ring-secondary ring-inset' : ''}`}
               >
-                <div className="text-xs font-semibold text-gray-700 mb-1">{day}</div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-sm font-bold ${
+                    isToday(day) ? 'text-secondary' : 'text-gray-900'
+                  }`}>
+                    {day}
+                  </span>
+                  {isToday(day) && (
+                    <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                  )}
+                </div>
+
                 <div className="space-y-1">
-                  {dayInterventions.slice(0, 2).map(intervention => {
+                  {dayInterventions.slice(0, 3).map((intervention) => {
                     const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
                       ? intervention.client.company_name
-                      : `${intervention.client?.first_name || ''} ${intervention.client?.last_name || ''}`.trim();
+                      : intervention.client
+                        ? `${intervention.client.first_name} ${intervention.client.last_name}`
+                        : 'Client';
+
+                    const fromGcal = intervention.created_from === 'gcal';
 
                     return (
-                      <button
+                      <div
                         key={intervention.id}
-                        onClick={() => router.push(`/dashboard/interventions/${intervention.id}`)}
-                        className={`w-full text-left text-xs px-1 py-0.5 rounded truncate transition-colors ${
-                          intervention.synced_to_gcal
-                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                            : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/dashboard/interventions/${intervention.id}`);
+                        }}
+                        className={`w-full text-left text-xs p-1.5 rounded border-l-2 transition-all hover:shadow-md cursor-pointer ${
+                          fromGcal
+                            ? 'bg-purple-50 border-purple-500 hover:bg-purple-100'
+                            : 'bg-green-50 border-green-500 hover:bg-green-100'
                         }`}
-                        title={intervention.synced_to_gcal ? 'Synchronisé avec Google Calendar' : 'En attente de synchronisation'}
                       >
-                        {intervention.synced_to_gcal ? '✅ ' : '⏳ '}
-                        {clientName}
-                      </button>
+                        <div className="font-semibold text-gray-900 truncate">
+                          {clientName}
+                        </div>
+                        {intervention.intervention_types_junction?.[0]?.intervention_type && (
+                          <div className="text-[10px] text-gray-600 truncate mt-0.5">
+                            {intervention.intervention_types_junction[0].intervention_type}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
-                  {dayInterventions.length > 2 && (
-                    <div className="text-xs text-gray-500 text-center">
-                      +{dayInterventions.length - 2}
+
+                  {dayInterventions.length > 3 && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full text-center text-xs py-1 text-blue-600 hover:text-blue-800 font-semibold"
+                    >
+                      + {dayInterventions.length - 3} autre{dayInterventions.length - 3 > 1 ? 's' : ''}
                     </div>
                   )}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
       </div>
 
-      {/* Liste interventions du mois */}
-      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">
-          Interventions du mois ({interventions.length})
-        </h3>
+      {selectedDate && (
+        <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base md:text-lg font-bold text-gray-900">
+              📋 {(() => {
+                const [year, month, day] = selectedDate.split('-').map(Number);
+                const date = new Date(year, month - 1, day);
+                return date.toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long'
+                });
+              })()}
+            </h3>
+            <button
+              onClick={() => setSelectedDate(null)}
+              className="text-sm text-gray-500 hover:text-gray-700 p-2"
+            >
+              ✕
+            </button>
+          </div>
 
-        {interventions.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">Aucune intervention ce mois-ci</p>
-        ) : (
-          <div className="space-y-2">
-            {interventions.map(intervention => {
-              const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
-                ? intervention.client.company_name
-                : `${intervention.client?.first_name || ''} ${intervention.client?.last_name || ''}`.trim();
+          {selectedInterventions.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 text-sm">Aucune intervention</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {selectedInterventions.map((intervention) => {
+                const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
+                  ? intervention.client.company_name
+                  : intervention.client
+                    ? `${intervention.client.first_name} ${intervention.client.last_name}`
+                    : 'Client non défini';
 
-              return (
-                <button
-                  key={intervention.id}
-                  onClick={() => router.push(`/dashboard/interventions/${intervention.id}`)}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${
-                    intervention.synced_to_gcal
-                      ? 'bg-gray-50 hover:bg-blue-50'
-                      : 'bg-orange-50 hover:bg-orange-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="text-xl">
-                      {intervention.synced_to_gcal ? '✅' : '⏳'}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{clientName}</p>
-                      <p className="text-xs text-gray-500">{intervention.reference}</p>
-                      {intervention.gcal_last_sync && (
-                        <p className="text-xs text-blue-600 mt-1">
-                          Sync: {new Date(intervention.gcal_last_sync).toLocaleString('fr-FR')}
-                        </p>
+                return (
+                  <div
+                    key={intervention.id}
+                    onClick={() => router.push(`/dashboard/interventions/${intervention.id}`)}
+                    className="border-2 border-gray-200 rounded-xl p-3 md:p-4 hover:border-secondary transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h4 className="font-bold text-gray-900 text-sm md:text-base flex-1">
+                        {clientName}
+                      </h4>
+                      {intervention.created_from === 'gcal' && (
+                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-semibold">
+                          📥 Google Calendar
+                        </span>
                       )}
                     </div>
+                    <div className="flex flex-wrap gap-1 md:gap-2 mb-2">
+                      {intervention.intervention_types_junction?.map((t: any, i: number) => (
+                        <span key={i} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                          {t.intervention_type}
+                        </span>
+                      ))}
+                    </div>
+                    {intervention.description && (
+                      <p className="text-xs text-gray-600 line-clamp-2">{intervention.description}</p>
+                    )}
                   </div>
-                  <div className="text-sm text-gray-600">
-                    📅 {new Date(intervention.scheduled_date).toLocaleDateString('fr-FR')}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

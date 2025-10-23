@@ -14,35 +14,66 @@ export default function CompleteInterventionPage({ params }: { params: { id: str
     try {
       const supabase = createClient();
 
-      // Mise à jour de l'intervention
-      const { error: updateError } = await supabase
-        .schema('piscine_delmas_public')
-        .from('interventions')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          client_present: clientPresent,
-        })
-        .eq('id', params.id);
-
-      if (updateError) {
-        console.error('Erreur Supabase:', updateError);
-        throw updateError;
-      }
-
-      // Redirection selon le choix
       if (clientPresent) {
-        // Client présent → Page signature
+        // CAS 1 : Client présent → Aller à la signature
+        const { error: updateError } = await supabase
+          .schema('piscine_delmas_public')
+          .from('interventions')
+          .update({
+            client_present: true,
+          })
+          .eq('id', params.id);
+
+        if (updateError) throw updateError;
+
         router.push(`/dashboard/interventions/${params.id}/sign`);
+
       } else {
-        // Client absent → Retour à la fiche
-        alert('✅ Intervention terminée ! La fiche sera envoyée au client par email.');
+        // CAS 2 : Client absent → Marquer completed + envoyer email + notifier Google Calendar
+        const { error: updateError } = await supabase
+          .schema('piscine_delmas_public')
+          .from('interventions')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            client_present: false,
+            client_signed_at: null,
+          })
+          .eq('id', params.id);
+
+        if (updateError) throw updateError;
+
+        // 🆕 Notifier Google Calendar
+        try {
+          await fetch(`/api/interventions/${params.id}/notify-completion`, {
+            method: 'POST',
+          });
+          console.log('✅ Google Calendar mis à jour');
+        } catch (err) {
+          console.warn('⚠️ Erreur mise à jour Google Calendar (non bloquant):', err);
+        }
+
+        // Envoyer l'email de confirmation
+        try {
+          const emailResponse = await fetch(`/api/interventions/${params.id}/send-confirmation`, {
+            method: 'POST',
+          });
+
+          if (!emailResponse.ok) {
+            console.warn('Échec envoi email, mais intervention validée');
+          }
+        } catch (err) {
+          console.warn('⚠️ Erreur envoi email (non bloquant):', err);
+        }
+
+        alert('✅ Intervention terminée ! Email envoyé + Google Calendar mis à jour.');
         router.push(`/dashboard/interventions/${params.id}`);
       }
 
     } catch (error: any) {
-      console.error('Erreur complète:', error);
+      console.error('Erreur:', error);
       alert(`❌ Erreur : ${error?.message || 'Erreur inconnue'}`);
+    } finally {
       setLoading(false);
     }
   };
@@ -66,7 +97,7 @@ export default function CompleteInterventionPage({ params }: { params: { id: str
             <div className="relative z-10">
               <div className="text-6xl mb-4">👤</div>
               <h3 className="text-2xl font-bold mb-2">Client présent</h3>
-              <p className="text-green-100 text-sm">Faire valider la fiche</p>
+              <p className="text-green-100 text-sm">Faire signer maintenant</p>
             </div>
           </button>
 
@@ -76,9 +107,9 @@ export default function CompleteInterventionPage({ params }: { params: { id: str
             className="group relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 text-white p-8 rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50"
           >
             <div className="relative z-10">
-              <div className="text-6xl mb-4">❌</div>
+              <div className="text-6xl mb-4">📧</div>
               <h3 className="text-2xl font-bold mb-2">Client absent</h3>
-              <p className="text-blue-100 text-sm">Envoyer par email</p>
+              <p className="text-blue-100 text-sm">Terminer et envoyer email</p>
             </div>
           </button>
         </div>
