@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { ClientSearch } from '@/components/clients/ClientSearch';
-import { InterventionForm } from '@/components/interventions/InterventionForm';
+import { useState, Suspense } from 'react';
+import { ClientSearchLazy, InterventionFormLazy } from '@/app/components/lazy';
+import { FormSkeleton } from '@/app/components/ui/Skeletons';
 
 export default function NewInterventionPage() {
   const [step, setStep] = useState<'search' | 'form'>('search');
@@ -46,17 +46,21 @@ export default function NewInterventionPage() {
         </div>
       </div>
 
-      {/* Contenu */}
+      {/* Contenu avec lazy loading */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         {step === 'search' && (
-          <ClientSearch
-            onClientSelect={handleClientSelect}
-            onCreateNew={handleCreateNew}
-          />
+          <Suspense fallback={<FormSkeleton />}>
+            <ClientSearchLazy
+              onClientSelect={handleClientSelect}
+              onCreateNew={handleCreateNew}
+            />
+          </Suspense>
         )}
 
         {step === 'form' && (
-          <InterventionForm existingClient={selectedClient} />
+          <Suspense fallback={<FormSkeleton />}>
+            <InterventionFormLazy existingClient={selectedClient} />
+          </Suspense>
         )}
       </div>
     </div>

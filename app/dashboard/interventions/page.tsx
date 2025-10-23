@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { InterventionCard } from '@/components/interventions/InterventionCard';
+import { InterventionCardLazy } from '@/app/components/lazy';
 import { Calendar, TrendingUp, Clock } from 'lucide-react';
+import { Suspense } from 'react';
+import { CardSkeleton } from '@/app/components/ui/Skeletons';
 
 type Intervention = {
   id: string;
@@ -367,7 +369,9 @@ export default function InterventionsPage() {
                 ) : (
                   <div className="space-y-2">
                     {todayInterventions.map((intervention) => (
-                      <InterventionCard key={intervention.id} intervention={intervention} />
+                      <Suspense key={intervention.id} fallback={<CardSkeleton />}>
+                        <InterventionCardLazy intervention={intervention} />
+                      </Suspense>
                     ))}
                   </div>
                 )}
@@ -384,7 +388,9 @@ export default function InterventionsPage() {
                   </div>
                   <div className="space-y-2">
                     {tomorrowInterventions.map((intervention) => (
-                      <InterventionCard key={intervention.id} intervention={intervention} />
+                      <Suspense key={intervention.id} fallback={<CardSkeleton />}>
+                        <InterventionCardLazy intervention={intervention} />
+                      </Suspense>
                     ))}
                   </div>
                 </div>
@@ -404,7 +410,9 @@ export default function InterventionsPage() {
                   </div>
                   <div className="space-y-2">
                     {upcomingInterventions.map((intervention) => (
-                      <InterventionCard key={intervention.id} intervention={intervention} />
+                      <Suspense key={intervention.id} fallback={<CardSkeleton />}>
+                        <InterventionCardLazy intervention={intervention} />
+                      </Suspense>
                     ))}
                   </div>
                 </div>
