@@ -57,3 +57,32 @@ export const getClient = cache(async (id: string): Promise<{ client: Client | nu
     interventions: interventionsData || [],
   };
 });
+
+type ClientWithCount = Client & {
+  intervention_count: number;
+};
+
+/**
+ * Récupère tous les clients avec comptage d'interventions
+ * Cache automatique pendant le rendu
+ */
+export const getClients = cache(async (): Promise<ClientWithCount[]> => {
+  const supabase = createServerClient();
+
+  const { data } = await supabase
+    .schema('piscine_delmas_public')
+    .from('clients')
+    .select(`
+      *,
+      interventions(count)
+    `)
+    .order('last_name')
+    .order('first_name');
+
+  const clientsWithCount = data?.map(c => ({
+    ...c,
+    intervention_count: c.interventions?.[0]?.count || 0,
+  })) || [];
+
+  return clientsWithCount as ClientWithCount[];
+});
