@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { deleteClient } from '@/lib/actions/clients';
+import { deleteClient } from '@/lib/actions/client-mutations';
 import { Trash2 } from 'lucide-react';
 
 type Client = {
