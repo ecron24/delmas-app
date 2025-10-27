@@ -32,7 +32,7 @@ export function ClientSearchAndList({ clients }: ClientSearchProps) {
 
     const clientName = client.type === 'professionnel' && client.company_name
       ? client.company_name
-      : `${client.first_name} ${client.last_name}`;
+      : client.last_name;
 
     // Confirmation
     const confirmed = window.confirm(
@@ -125,14 +125,14 @@ export function ClientSearchAndList({ clients }: ClientSearchProps) {
                     <h3 className="text-lg font-bold text-gray-900 truncate">
                       {client.type === 'professionnel' && client.company_name
                         ? client.company_name
-                        : `${client.first_name} ${client.last_name}`}
+                        : client.last_name}
                     </h3>
                   </div>
 
                   {/* Infos */}
                   <div className="text-sm text-gray-600 space-y-1">
                     {client.type === 'professionnel' && client.company_name && (
-                      <p>Contact: {client.first_name} {client.last_name}</p>
+                      <p>Contact: {client.last_name}</p>
                     )}
                     {(client.phone || client.mobile) && (
                       <p>

@@ -298,9 +298,7 @@ export default function CalendarPage() {
                   {dayInterventions.slice(0, 3).map((intervention) => {
                     const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
                       ? intervention.client.company_name
-                      : intervention.client
-                        ? `${intervention.client.first_name} ${intervention.client.last_name}`
-                        : 'Client';
+                      : intervention.client?.last_name || 'Client';
 
                     const fromGcal = intervention.created_from === 'gcal';
 
@@ -375,9 +373,7 @@ export default function CalendarPage() {
               {selectedInterventions.map((intervention) => {
                 const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
                   ? intervention.client.company_name
-                  : intervention.client
-                    ? `${intervention.client.first_name} ${intervention.client.last_name}`
-                    : 'Client non défini';
+                  : intervention.client?.last_name || 'Client non défini';
 
                 return (
                   <div
