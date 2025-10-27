@@ -23,7 +23,7 @@ export function ClientLink({
 
   const displayName = clientType === 'professionnel' && companyName
     ? companyName
-    : `${firstName} ${lastName}`;
+    : lastName;
 
   const emoji = clientType === 'professionnel' ? '🏢' : '👤';
 

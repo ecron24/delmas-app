@@ -37,11 +37,11 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               <h1 className="text-xl md:text-2xl font-bold text-gray-900">
                 {client.type === 'professionnel' && client.company_name
                   ? client.company_name
-                  : `${client.first_name} ${client.last_name}`}
+                  : client.last_name}
               </h1>
               {client.type === 'professionnel' && client.company_name && (
                 <p className="text-sm md:text-base text-gray-600">
-                  Contact: {client.first_name} {client.last_name}
+                  Contact: {client.last_name}
                 </p>
               )}
             </div>

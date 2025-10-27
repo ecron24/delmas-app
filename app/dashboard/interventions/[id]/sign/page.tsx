@@ -100,7 +100,11 @@ export default function SignInterventionPage({ params }: { params: { id: string 
         <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6 mb-6">
           <h1 className="text-2xl font-bold mb-2">✍️ Validation par le client</h1>
           <p className="text-gray-600">
-            Client : <strong>{intervention.client.first_name} {intervention.client.last_name}</strong>
+            Client : <strong>
+              {intervention.client.type === 'professionnel' && intervention.client.company_name
+                ? intervention.client.company_name
+                : intervention.client.last_name}
+            </strong>
           </p>
           <p className="text-gray-600">
             Intervention : <strong>{intervention.reference}</strong>

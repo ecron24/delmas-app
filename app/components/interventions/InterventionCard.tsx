@@ -89,7 +89,7 @@ export function InterventionCard({ intervention }: { intervention: Intervention 
 
   const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
     ? intervention.client.company_name
-    : `${intervention.client?.first_name || ''} ${intervention.client?.last_name || ''}`.trim();
+    : intervention.client?.last_name || '';
 
   // ========================================
   // 🎯 FORMAT DE LA DATE
