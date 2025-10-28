@@ -43,14 +43,29 @@ export default function CompleteInterventionPage({ params }: { params: { id: str
 
         if (updateError) throw updateError;
 
+        // Suivre les succès/échecs
+        let calendarSuccess = false;
+        let emailSuccess = false;
+        const errors: string[] = [];
+
         // 🆕 Notifier Google Calendar
         try {
-          await fetch(`/api/interventions/${params.id}/notify-completion`, {
+          const calendarResponse = await fetch(`/api/interventions/${params.id}/notify-completion`, {
             method: 'POST',
           });
-          console.log('✅ Google Calendar mis à jour');
-        } catch (err) {
-          console.warn('⚠️ Erreur mise à jour Google Calendar (non bloquant):', err);
+
+          if (calendarResponse.ok) {
+            const data = await calendarResponse.json();
+            calendarSuccess = data.success || false;
+            console.log('✅ Google Calendar:', data);
+          } else {
+            const errorData = await calendarResponse.json();
+            errors.push(`Calendar: ${errorData.error || 'Erreur inconnue'}`);
+            console.error('❌ Erreur Calendar:', errorData);
+          }
+        } catch (err: any) {
+          errors.push(`Calendar: ${err.message}`);
+          console.error('⚠️ Erreur mise à jour Google Calendar:', err);
         }
 
         // Envoyer l'email de confirmation
@@ -59,14 +74,40 @@ export default function CompleteInterventionPage({ params }: { params: { id: str
             method: 'POST',
           });
 
-          if (!emailResponse.ok) {
-            console.warn('Échec envoi email, mais intervention validée');
+          if (emailResponse.ok) {
+            const data = await emailResponse.json();
+            emailSuccess = data.success || false;
+            console.log('✅ Email:', data);
+          } else {
+            const errorData = await emailResponse.json();
+            errors.push(`Email: ${errorData.error || 'Erreur inconnue'}`);
+            console.error('❌ Erreur Email:', errorData);
           }
-        } catch (err) {
-          console.warn('⚠️ Erreur envoi email (non bloquant):', err);
+        } catch (err: any) {
+          errors.push(`Email: ${err.message}`);
+          console.error('⚠️ Erreur envoi email:', err);
         }
 
-        alert('✅ Intervention terminée ! Email envoyé + Google Calendar mis à jour.');
+        // Message de feedback détaillé
+        let message = '✅ Intervention marquée comme terminée.\n\n';
+
+        if (calendarSuccess) {
+          message += '✅ Google Calendar mis à jour\n';
+        } else {
+          message += '⚠️ Google Calendar non mis à jour\n';
+        }
+
+        if (emailSuccess) {
+          message += '✅ Email envoyé au client\n';
+        } else {
+          message += '⚠️ Email non envoyé\n';
+        }
+
+        if (errors.length > 0) {
+          message += '\n⚠️ Erreurs:\n' + errors.join('\n');
+        }
+
+        alert(message);
         router.push(`/dashboard/interventions/${params.id}`);
       }
 
