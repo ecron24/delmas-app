@@ -8,11 +8,17 @@ export default function CompleteInterventionPage({ params }: { params: { id: str
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showOnHoldModal, setShowOnHoldModal] = useState(false);
-  const [onHoldReason, setOnHoldReason] = useState('');
+  const [onHoldReasonType, setOnHoldReasonType] = useState<string>('');
+  const [onHoldReasonDetails, setOnHoldReasonDetails] = useState('');
 
   const handlePutOnHold = async () => {
-    if (!onHoldReason.trim()) {
-      alert('⚠️ Veuillez indiquer la raison de la mise en attente');
+    if (!onHoldReasonType) {
+      alert('⚠️ Veuillez sélectionner une raison de mise en attente');
+      return;
+    }
+
+    if (onHoldReasonType === 'defective_equipment' && !onHoldReasonDetails.trim()) {
+      alert('⚠️ Veuillez préciser quel appareil est défectueux');
       return;
     }
 
@@ -24,12 +30,24 @@ export default function CompleteInterventionPage({ params }: { params: { id: str
       // Récupérer l'utilisateur actuel
       const { data: { user } } = await supabase.auth.getUser();
 
+      // Construire le message de raison
+      const reasonLabels: Record<string, string> = {
+        'missing_water': 'Manque d\'eau dans la piscine',
+        'defective_equipment': 'Appareil défectueux',
+        'multi_phase_treatment': 'Bassin à traiter en plusieurs fois',
+      };
+
+      let finalReason = reasonLabels[onHoldReasonType] || onHoldReasonType;
+      if (onHoldReasonType === 'defective_equipment' && onHoldReasonDetails.trim()) {
+        finalReason += ` : ${onHoldReasonDetails}`;
+      }
+
       const { error: updateError } = await supabase
         .schema('piscine_delmas_public')
         .from('interventions')
         .update({
           status: 'in_progress', // Remettre en cours
-          on_hold_reason: onHoldReason,
+          on_hold_reason: finalReason,
           on_hold_at: new Date().toISOString(),
           on_hold_by: user?.id,
         })
@@ -234,31 +252,82 @@ export default function CompleteInterventionPage({ params }: { params: { id: str
               ⏸️ Mettre l'intervention en attente
             </h2>
             <p className="text-gray-600 mb-6">
-              Indiquez la raison de la mise en attente pour référence future :
+              Sélectionnez la raison de la mise en attente :
             </p>
 
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Raison de la mise en attente *
+            <div className="mb-6 space-y-3">
+              {/* Option 1 : Manque d'eau */}
+              <label className="flex items-start p-4 border-2 border-gray-300 rounded-xl cursor-pointer hover:border-orange-500 transition-colors">
+                <input
+                  type="radio"
+                  name="onHoldReason"
+                  value="missing_water"
+                  checked={onHoldReasonType === 'missing_water'}
+                  onChange={(e) => setOnHoldReasonType(e.target.value)}
+                  disabled={loading}
+                  className="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500"
+                />
+                <div className="ml-3 flex-1">
+                  <span className="font-semibold text-gray-900">💧 Manque d'eau dans la piscine</span>
+                </div>
               </label>
-              <textarea
-                value={onHoldReason}
-                onChange={(e) => setOnHoldReason(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-orange-500 focus:outline-none resize-none"
-                rows={5}
-                placeholder="Ex: Manque d'eau dans la piscine, appareil défectueux à remplacer, traitement en plusieurs fois..."
-                disabled={loading}
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                💡 Exemples : Manque d'eau • Appareil défectueux • Traitement en plusieurs fois
-              </p>
+
+              {/* Option 2 : Appareil défectueux */}
+              <label className="flex items-start p-4 border-2 border-gray-300 rounded-xl cursor-pointer hover:border-orange-500 transition-colors">
+                <input
+                  type="radio"
+                  name="onHoldReason"
+                  value="defective_equipment"
+                  checked={onHoldReasonType === 'defective_equipment'}
+                  onChange={(e) => setOnHoldReasonType(e.target.value)}
+                  disabled={loading}
+                  className="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500"
+                />
+                <div className="ml-3 flex-1">
+                  <span className="font-semibold text-gray-900">🔧 Appareil défectueux</span>
+                </div>
+              </label>
+
+              {/* Textarea conditionnelle pour appareil défectueux */}
+              {onHoldReasonType === 'defective_equipment' && (
+                <div className="ml-7 mt-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Précisez quel appareil *
+                  </label>
+                  <textarea
+                    value={onHoldReasonDetails}
+                    onChange={(e) => setOnHoldReasonDetails(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-orange-500 focus:outline-none resize-none"
+                    rows={3}
+                    placeholder="Ex: Pompe de filtration, électrolyseur, robot nettoyeur..."
+                    disabled={loading}
+                  />
+                </div>
+              )}
+
+              {/* Option 3 : Traitement en plusieurs fois */}
+              <label className="flex items-start p-4 border-2 border-gray-300 rounded-xl cursor-pointer hover:border-orange-500 transition-colors">
+                <input
+                  type="radio"
+                  name="onHoldReason"
+                  value="multi_phase_treatment"
+                  checked={onHoldReasonType === 'multi_phase_treatment'}
+                  onChange={(e) => setOnHoldReasonType(e.target.value)}
+                  disabled={loading}
+                  className="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500"
+                />
+                <div className="ml-3 flex-1">
+                  <span className="font-semibold text-gray-900">🔄 Bassin à traiter en plusieurs fois</span>
+                </div>
+              </label>
             </div>
 
             <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowOnHoldModal(false);
-                  setOnHoldReason('');
+                  setOnHoldReasonType('');
+                  setOnHoldReasonDetails('');
                 }}
                 disabled={loading}
                 className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
@@ -267,7 +336,7 @@ export default function CompleteInterventionPage({ params }: { params: { id: str
               </button>
               <button
                 onClick={handlePutOnHold}
-                disabled={loading || !onHoldReason.trim()}
+                disabled={loading || !onHoldReasonType || (onHoldReasonType === 'defective_equipment' && !onHoldReasonDetails.trim())}
                 className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-xl font-semibold hover:bg-orange-700 transition-colors disabled:opacity-50"
               >
                 {loading ? 'Enregistrement...' : 'Confirmer'}
