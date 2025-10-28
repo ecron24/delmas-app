@@ -29,16 +29,8 @@ type Intervention = {
   intervention_types_junction: Array<{ intervention_type: string }>;
   synced_to_gcal?: boolean;
   created_from?: 'app' | 'gcal';
-};
-
-type UnpaidInvoice = {
-  intervention_id: string;
-  invoice_number: string;
-  total_ttc: number;
-  invoice_date: string;
-  due_date: string;
-  payment_status: string;
-  intervention: Intervention;
+  on_hold_at?: string | null;
+  on_hold_reason?: string | null;
 };
 
 export default function InterventionsPage() {
@@ -47,22 +39,22 @@ export default function InterventionsPage() {
   const [tomorrowInterventions, setTomorrowInterventions] = useState<Intervention[]>([]);
   const [upcomingInterventions, setUpcomingInterventions] = useState<Intervention[]>([]);
   const [inProgressInterventions, setInProgressInterventions] = useState<Intervention[]>([]);
-  const [unpaidInvoices, setUnpaidInvoices] = useState<UnpaidInvoice[]>([]);
+  const [onHoldInterventions, setOnHoldInterventions] = useState<Intervention[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'planning' | 'inprogress' | 'unpaid'>('planning');
+  const [activeTab, setActiveTab] = useState<'planning' | 'inprogress' | 'onhold'>('planning');
 
   const [stats, setStats] = useState({
     todayCount: 0,
     weekCount: 0,
     weekRevenue: 0,
     inProgressCount: 0,
+    onHoldCount: 0,
     unpaidCount: 0,
     unpaidAmount: 0,
   });
 
   useEffect(() => {
     loadInterventions();
-    loadUnpaidInvoices();
   }, []);
 
   const loadInterventions = async () => {
@@ -121,13 +113,18 @@ export default function InterventionsPage() {
     }).slice(0, 10);
 
     const inProgressList = interventionsData.filter(i =>
-      i.status === 'in_progress'
+      i.status === 'in_progress' && !i.on_hold_at  // En cours mais PAS en attente
+    );
+
+    const onHoldList = interventionsData.filter(i =>
+      i.on_hold_at !== null && i.on_hold_at !== undefined  // En attente
     );
 
     setTodayInterventions(todayList);
     setTomorrowInterventions(tomorrowList);
     setUpcomingInterventions(upcomingList);
     setInProgressInterventions(inProgressList);
+    setOnHoldInterventions(onHoldList);
 
     const weekInterventions = interventionsData.filter(i => {
       const date = new Date(i.scheduled_date);
@@ -143,74 +140,12 @@ export default function InterventionsPage() {
       weekCount: weekInterventions.length,
       weekRevenue,
       inProgressCount: inProgressList.length,
+      onHoldCount: onHoldList.length,
       unpaidCount: 0,
       unpaidAmount: 0,
     });
 
     setLoading(false);
-  };
-
-  const loadUnpaidInvoices = async () => {
-    const supabase = createClient();
-
-    const { data: invoices, error: invoicesError } = await supabase
-      .schema('piscine_delmas_compta')
-      .from('invoices')
-      .select('*')
-      .in('status', ['sent', 'overdue'])
-      .order('due_date', { ascending: true });
-
-    if (invoicesError) {
-      console.error('Erreur chargement factures:', invoicesError);
-      return;
-    }
-
-    if (!invoices || invoices.length === 0) {
-      setUnpaidInvoices([]);
-      setStats(prev => ({ ...prev, unpaidCount: 0, unpaidAmount: 0 }));
-      return;
-    }
-
-    const interventionIds = invoices.map(inv => inv.intervention_id);
-
-    const { data: interventions, error: interventionsError } = await supabase
-      .schema('piscine_delmas_public')
-      .from('interventions')
-      .select(`
-        id,
-        reference,
-        scheduled_date,
-        description,
-        status,
-        intervention_types_junction(intervention_type),
-        client:clients(id, first_name, last_name, company_name, type)
-      `)
-      .in('id', interventionIds);
-
-    if (interventionsError) {
-      console.error('Erreur chargement interventions:', interventionsError);
-      return;
-    }
-
-    const invoicesWithIntervention = invoices.map(invoice => {
-      const intervention = interventions?.find(i => i.id === invoice.intervention_id);
-      return {
-        ...invoice,
-        intervention: intervention || null,
-      };
-    });
-
-    const unpaidAmount = invoicesWithIntervention.reduce((sum, invoice) => {
-      return sum + invoice.total_ttc;
-    }, 0);
-
-    setUnpaidInvoices(invoicesWithIntervention as any);
-
-    setStats(prev => ({
-      ...prev,
-      unpaidCount: invoicesWithIntervention.length,
-      unpaidAmount,
-    }));
   };
 
   if (loading) {
@@ -268,14 +203,14 @@ export default function InterventionsPage() {
           </div>
         </div>
 
-        {/* CA semaine */}
-        <div className="bg-white rounded-lg p-4 border-2 border-primary shadow-sm">
+        {/* En attente */}
+        <div className="bg-white rounded-lg p-4 border-2 border-orange-500 shadow-sm">
           <div className="flex flex-col items-center text-center">
-            <span className="text-2xl mb-2">💰</span>
-            <span className="text-2xl md:text-3xl font-bold text-primary mb-1">
-              {stats.weekRevenue.toFixed(0)}€
+            <span className="text-3xl mb-2">⏸️</span>
+            <span className={`text-3xl font-bold text-orange-600 mb-1 ${stats.onHoldCount > 0 ? 'animate-pulse' : ''}`}>
+              {stats.onHoldCount}
             </span>
-            <p className="text-xs font-semibold text-gray-900">CA semaine</p>
+            <p className="text-xs font-semibold text-gray-900">En attente</p>
           </div>
         </div>
       </div>
@@ -309,7 +244,7 @@ export default function InterventionsPage() {
             onClick={() => setActiveTab('inprogress')}
             className={`flex-1 py-3 px-2 text-sm font-bold transition-colors relative ${
               activeTab === 'inprogress'
-                ? 'bg-orange-50 text-orange-600'
+                ? 'bg-green-50 text-green-600'
                 : 'text-gray-600'
             }`}
           >
@@ -317,35 +252,35 @@ export default function InterventionsPage() {
               <span>⏳</span>
               <span className="hidden sm:inline">En cours</span>
               {stats.inProgressCount > 0 && (
-                <span className="bg-orange-600 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
+                <span className="bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
                   {stats.inProgressCount}
                 </span>
               )}
             </span>
             {activeTab === 'inprogress' && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-orange-600"></div>
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-green-600"></div>
             )}
           </button>
 
           <button
-            onClick={() => setActiveTab('unpaid')}
+            onClick={() => setActiveTab('onhold')}
             className={`flex-1 py-3 px-2 text-sm font-bold transition-colors relative ${
-              activeTab === 'unpaid'
-                ? 'bg-yellow-50 text-yellow-600'
+              activeTab === 'onhold'
+                ? 'bg-orange-50 text-orange-600'
                 : 'text-gray-600'
             }`}
           >
             <span className="flex flex-col items-center gap-1">
-              <span>💰</span>
-              <span className="hidden sm:inline">Impayés</span>
-              {stats.unpaidCount > 0 && (
-                <span className="bg-yellow-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                  {stats.unpaidCount}
+              <span>⏸️</span>
+              <span className="hidden sm:inline">En attente</span>
+              {stats.onHoldCount > 0 && (
+                <span className="bg-orange-600 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
+                  {stats.onHoldCount}
                 </span>
               )}
             </span>
-            {activeTab === 'unpaid' && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-yellow-600"></div>
+            {activeTab === 'onhold' && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-orange-600"></div>
             )}
           </button>
         </div>
@@ -442,7 +377,7 @@ export default function InterventionsPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base sm:text-lg font-bold text-gray-900">⏳ En cours</h2>
-                <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-bold">
+                <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold">
                   {inProgressInterventions.length}
                 </span>
               </div>
@@ -464,88 +399,27 @@ export default function InterventionsPage() {
             </div>
           )}
 
-          {activeTab === 'unpaid' && (
+          {activeTab === 'onhold' && (
             <div>
-              <div className="mb-3">
-                <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-1">💰 Impayés</h2>
-                <p className="text-xs sm:text-sm text-gray-500">
-                  Total : <span className="font-bold text-red-600">{stats.unpaidAmount.toFixed(2)}€</span>
-                </p>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900">⏸️ En attente</h2>
+                <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-bold">
+                  {onHoldInterventions.length}
+                </span>
               </div>
 
-              {unpaidInvoices.length === 0 ? (
+              {onHoldInterventions.length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                   <p className="text-3xl mb-2">✅</p>
-                  <p className="text-sm text-gray-600">Tous les paiements sont à jour</p>
+                  <p className="text-sm text-gray-600">Aucune intervention en attente</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {unpaidInvoices.map((invoice) => {
-                    const intervention = invoice.intervention;
-                    const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
-                      ? intervention.client.company_name
-                      : intervention.client
-                        ? `${intervention.client.first_name} ${intervention.client.last_name}`
-                        : 'Client non défini';
-
-                    const remainingAmount = invoice.total_ttc;
-                    const isOverdue = new Date(invoice.due_date) < new Date();
-
-                    return (
-                      <div
-                        key={invoice.intervention_id}
-                        className={`border-2 rounded-xl p-3 sm:p-4 ${
-                          isOverdue
-                            ? 'bg-red-50 border-red-300'
-                            : 'bg-yellow-50 border-yellow-300'
-                        }`}
-                      >
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <button
-                                onClick={() => router.push(`/dashboard/interventions/${intervention.id}`)}
-                                className="font-bold text-gray-900 hover:text-secondary text-sm sm:text-base line-clamp-1"
-                              >
-                                {clientName}
-                              </button>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded border border-gray-300">
-                                  {invoice.invoice_number}
-                                </span>
-                                {isOverdue && (
-                                  <span className="text-xs bg-red-600 text-white px-2 py-0.5 rounded font-bold animate-pulse">
-                                    ⚠️ RETARD
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs text-gray-500 mb-1">Restant</p>
-                              <p className={`text-xl sm:text-2xl font-bold ${isOverdue ? 'text-red-600' : 'text-orange-600'}`}>
-                                {remainingAmount.toFixed(0)}€
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="text-xs text-gray-500 space-y-1">
-                            <div>📅 {new Date(intervention.scheduled_date).toLocaleDateString('fr-FR')}</div>
-                            <div>📆 Échéance : {new Date(invoice.due_date).toLocaleDateString('fr-FR')}</div>
-                          </div>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/dashboard/invoices/${invoice.intervention_id}/payment`);
-                            }}
-                            className="w-full text-sm bg-green-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md"
-                          >
-                            💳 Enregistrer paiement
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {onHoldInterventions.map((intervention) => (
+                    <Suspense key={intervention.id} fallback={<CardSkeleton />}>
+                      <InterventionCardLazy intervention={intervention} />
+                    </Suspense>
+                  ))}
                 </div>
               )}
             </div>
