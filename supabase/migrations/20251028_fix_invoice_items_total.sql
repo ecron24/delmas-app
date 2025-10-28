@@ -20,7 +20,7 @@ WHERE total IS NULL;
 CREATE OR REPLACE FUNCTION calculate_invoice_item_total()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = piscine_delmas_compta
 AS $$
 BEGIN
