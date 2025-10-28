@@ -29,6 +29,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month'); // Vue par défaut: mois
 
   useEffect(() => {
     loadInterventions();
@@ -147,7 +148,35 @@ export default function CalendarPage() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
   };
 
+  const previousWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() - 7);
+    setCurrentDate(newDate);
+  };
+
+  const nextWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + 7);
+    setCurrentDate(newDate);
+  };
+
+  const getWeekDays = () => {
+    const curr = new Date(currentDate);
+    const first = curr.getDate() - curr.getDay(); // Premier jour de la semaine (Dimanche)
+
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(curr.setDate(first + i));
+      weekDays.push(day);
+    }
+    return weekDays;
+  };
+
   const monthName = currentDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const weekDays = getWeekDays();
+  const weekRange = viewMode === 'week'
+    ? `${weekDays[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} - ${weekDays[6].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
+    : '';
   const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
   const days = getDaysInMonth();
 
@@ -238,18 +267,44 @@ export default function CalendarPage() {
       <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 overflow-hidden">
         <div className="flex items-center justify-between p-3 md:p-4 border-b-2 border-gray-200 bg-primary">
           <button
-            onClick={previousMonth}
+            onClick={viewMode === 'month' ? previousMonth : previousWeek}
             className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
           >
             <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
           </button>
 
-          <h2 className="text-base md:text-xl font-bold text-white capitalize">
-            {monthName}
-          </h2>
+          <div className="flex flex-col items-center gap-2">
+            <h2 className="text-base md:text-xl font-bold text-white capitalize">
+              {viewMode === 'month' ? monthName : weekRange}
+            </h2>
+
+            {/* Toggle Mois / Semaine */}
+            <div className="flex bg-white/20 rounded-lg p-1 gap-1">
+              <button
+                onClick={() => setViewMode('month')}
+                className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
+                  viewMode === 'month'
+                    ? 'bg-white text-primary'
+                    : 'text-white hover:bg-white/10'
+                }`}
+              >
+                Mois
+              </button>
+              <button
+                onClick={() => setViewMode('week')}
+                className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
+                  viewMode === 'week'
+                    ? 'bg-white text-primary'
+                    : 'text-white hover:bg-white/10'
+                }`}
+              >
+                Semaine
+              </button>
+            </div>
+          </div>
 
           <button
-            onClick={nextMonth}
+            onClick={viewMode === 'month' ? nextMonth : nextWeek}
             className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
           >
             <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
@@ -265,80 +320,158 @@ export default function CalendarPage() {
         </div>
 
         <div className="grid grid-cols-7 overflow-x-auto">
-          {days.map((day, index) => {
-            if (day === null) {
-              return <div key={`empty-${index}`} className="min-h-24 border border-gray-100 bg-gray-50"></div>;
-            }
+          {viewMode === 'month' ? (
+            // Vue mensuelle
+            days.map((day, index) => {
+              if (day === null) {
+                return <div key={`empty-${index}`} className="min-h-24 border border-gray-100 bg-gray-50"></div>;
+              }
 
-            const dayInterventions = getInterventionsForDay(day);
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const dayInterventions = getInterventionsForDay(day);
+              const year = currentDate.getFullYear();
+              const month = currentDate.getMonth();
+              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-            return (
-              <button
-                key={day}
-                onClick={() => setSelectedDate(dateStr)}
-                className={`min-h-24 border border-gray-100 p-1.5 transition-colors relative text-left w-full ${
-                  isToday(day) ? 'bg-blue-50 border-secondary' : 'hover:bg-gray-50'
-                } ${selectedDate === dateStr ? 'ring-2 ring-secondary ring-inset' : ''}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className={`text-sm font-bold ${
-                    isToday(day) ? 'text-secondary' : 'text-gray-900'
-                  }`}>
-                    {day}
-                  </span>
-                  {isToday(day) && (
-                    <div className="w-2 h-2 bg-secondary rounded-full"></div>
-                  )}
-                </div>
+              return (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDate(dateStr)}
+                  className={`min-h-24 border border-gray-100 p-1.5 transition-colors relative text-left w-full ${
+                    isToday(day) ? 'bg-blue-50 border-secondary' : 'hover:bg-gray-50'
+                  } ${selectedDate === dateStr ? 'ring-2 ring-secondary ring-inset' : ''}`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-sm font-bold ${
+                      isToday(day) ? 'text-secondary' : 'text-gray-900'
+                    }`}>
+                      {day}
+                    </span>
+                    {isToday(day) && (
+                      <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                    )}
+                  </div>
 
-                <div className="space-y-1">
-                  {dayInterventions.slice(0, 3).map((intervention) => {
-                    const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
-                      ? intervention.client.company_name
-                      : intervention.client?.last_name || 'Client';
+                  <div className="space-y-1">
+                    {dayInterventions.slice(0, 3).map((intervention) => {
+                      const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
+                        ? intervention.client.company_name
+                        : intervention.client?.last_name || 'Client';
 
-                    const fromGcal = intervention.created_from === 'gcal';
+                      const fromGcal = intervention.created_from === 'gcal';
 
-                    return (
-                      <div
-                        key={intervention.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/dashboard/interventions/${intervention.id}`);
-                        }}
-                        className={`w-full text-left text-xs p-1.5 rounded border-l-2 transition-all hover:shadow-md cursor-pointer ${
-                          fromGcal
-                            ? 'bg-purple-50 border-purple-500 hover:bg-purple-100'
-                            : 'bg-green-50 border-green-500 hover:bg-green-100'
-                        }`}
-                      >
-                        <div className="font-semibold text-gray-900 truncate">
-                          {clientName}
-                        </div>
-                        {intervention.intervention_types_junction?.[0]?.intervention_type && (
-                          <div className="text-[10px] text-gray-600 truncate mt-0.5">
-                            {intervention.intervention_types_junction[0].intervention_type}
+                      return (
+                        <div
+                          key={intervention.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/dashboard/interventions/${intervention.id}`);
+                          }}
+                          className={`w-full text-left text-xs p-1.5 rounded border-l-2 transition-all hover:shadow-md cursor-pointer ${
+                            fromGcal
+                              ? 'bg-purple-50 border-purple-500 hover:bg-purple-100'
+                              : 'bg-green-50 border-green-500 hover:bg-green-100'
+                          }`}
+                        >
+                          <div className="font-semibold text-gray-900 truncate">
+                            {clientName}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          {intervention.intervention_types_junction?.[0]?.intervention_type && (
+                            <div className="text-[10px] text-gray-600 truncate mt-0.5">
+                              {intervention.intervention_types_junction[0].intervention_type}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
 
-                  {dayInterventions.length > 3 && (
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-full text-center text-xs py-1 text-blue-600 hover:text-blue-800 font-semibold"
-                    >
-                      + {dayInterventions.length - 3} autre{dayInterventions.length - 3 > 1 ? 's' : ''}
-                    </div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+                    {dayInterventions.length > 3 && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full text-center text-xs py-1 text-blue-600 hover:text-blue-800 font-semibold"
+                      >
+                        + {dayInterventions.length - 3} autre{dayInterventions.length - 3 > 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })
+          ) : (
+            // Vue hebdomadaire - Plus grande et plus lisible
+            weekDays.map((date) => {
+              const day = date.getDate();
+              const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+              const dayInterventions = interventions.filter(i => {
+                const interventionDate = i.scheduled_date.split(' ')[0].split('T')[0];
+                return interventionDate === dateStr;
+              });
+
+              const today = new Date();
+              const isTodayDate = date.toDateString() === today.toDateString();
+
+              return (
+                <button
+                  key={dateStr}
+                  onClick={() => setSelectedDate(dateStr)}
+                  className={`min-h-40 md:min-h-48 border border-gray-100 p-2 md:p-3 transition-colors relative text-left w-full ${
+                    isTodayDate ? 'bg-blue-50 border-secondary' : 'hover:bg-gray-50'
+                  } ${selectedDate === dateStr ? 'ring-2 ring-secondary ring-inset' : ''}`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-base md:text-lg font-bold ${
+                      isTodayDate ? 'text-secondary' : 'text-gray-900'
+                    }`}>
+                      {day}
+                    </span>
+                    {isTodayDate && (
+                      <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {dayInterventions.map((intervention) => {
+                      const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
+                        ? intervention.client.company_name
+                        : intervention.client?.last_name || 'Client';
+
+                      const fromGcal = intervention.created_from === 'gcal';
+
+                      return (
+                        <div
+                          key={intervention.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/dashboard/interventions/${intervention.id}`);
+                          }}
+                          className={`w-full text-left text-sm p-2 rounded border-l-2 transition-all hover:shadow-md cursor-pointer ${
+                            fromGcal
+                              ? 'bg-purple-50 border-purple-500 hover:bg-purple-100'
+                              : 'bg-green-50 border-green-500 hover:bg-green-100'
+                          }`}
+                        >
+                          <div className="font-semibold text-gray-900">
+                            {clientName}
+                          </div>
+                          {intervention.intervention_types_junction?.[0]?.intervention_type && (
+                            <div className="text-xs text-gray-600 mt-1">
+                              {intervention.intervention_types_junction[0].intervention_type}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {dayInterventions.length === 0 && (
+                      <div className="text-xs text-gray-400 text-center py-2">
+                        Aucune intervention
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
 
