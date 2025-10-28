@@ -319,7 +319,7 @@ export default function CalendarPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-7 overflow-x-auto">
+        <div className={viewMode === 'month' ? 'grid grid-cols-7 overflow-x-auto' : 'flex flex-col gap-2 p-3'}>
           {viewMode === 'month' ? (
             // Vue mensuelle
             days.map((day, index) => {
@@ -397,7 +397,7 @@ export default function CalendarPage() {
               );
             })
           ) : (
-            // Vue hebdomadaire - Plus grande et plus lisible
+            // Vue hebdomadaire - Verticale pour mobile, plus lisible
             weekDays.map((date) => {
               const day = date.getDate();
               const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -411,64 +411,79 @@ export default function CalendarPage() {
               const isTodayDate = date.toDateString() === today.toDateString();
 
               return (
-                <button
+                <div
                   key={dateStr}
-                  onClick={() => setSelectedDate(dateStr)}
-                  className={`min-h-40 md:min-h-48 border border-gray-100 p-2 md:p-3 transition-colors relative text-left w-full ${
-                    isTodayDate ? 'bg-blue-50 border-secondary' : 'hover:bg-gray-50'
-                  } ${selectedDate === dateStr ? 'ring-2 ring-secondary ring-inset' : ''}`}
+                  className={`border-2 rounded-xl p-3 transition-colors ${
+                    isTodayDate ? 'bg-blue-50 border-secondary' : 'border-gray-200 hover:border-gray-300'
+                  } ${selectedDate === dateStr ? 'ring-2 ring-secondary' : ''}`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-base md:text-lg font-bold ${
-                      isTodayDate ? 'text-secondary' : 'text-gray-900'
-                    }`}>
-                      {day}
-                    </span>
+                  {/* En-tête du jour */}
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b-2 border-gray-200">
+                    <div>
+                      <div className={`text-2xl font-bold ${
+                        isTodayDate ? 'text-secondary' : 'text-gray-900'
+                      }`}>
+                        {date.toLocaleDateString('fr-FR', { weekday: 'long' })}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+                      </div>
+                    </div>
                     {isTodayDate && (
-                      <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                      <span className="px-3 py-1 bg-secondary text-white text-xs font-bold rounded-full">
+                        Aujourd'hui
+                      </span>
+                    )}
+                    {dayInterventions.length > 0 && (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
+                        {dayInterventions.length}
+                      </span>
                     )}
                   </div>
 
+                  {/* Liste des interventions */}
                   <div className="space-y-2">
-                    {dayInterventions.map((intervention) => {
-                      const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
-                        ? intervention.client.company_name
-                        : intervention.client?.last_name || 'Client';
-
-                      const fromGcal = intervention.created_from === 'gcal';
-
-                      return (
-                        <div
-                          key={intervention.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/dashboard/interventions/${intervention.id}`);
-                          }}
-                          className={`w-full text-left text-sm p-2 rounded border-l-2 transition-all hover:shadow-md cursor-pointer ${
-                            fromGcal
-                              ? 'bg-purple-50 border-purple-500 hover:bg-purple-100'
-                              : 'bg-green-50 border-green-500 hover:bg-green-100'
-                          }`}
-                        >
-                          <div className="font-semibold text-gray-900">
-                            {clientName}
-                          </div>
-                          {intervention.intervention_types_junction?.[0]?.intervention_type && (
-                            <div className="text-xs text-gray-600 mt-1">
-                              {intervention.intervention_types_junction[0].intervention_type}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {dayInterventions.length === 0 && (
-                      <div className="text-xs text-gray-400 text-center py-2">
+                    {dayInterventions.length === 0 ? (
+                      <div className="text-center py-4 text-sm text-gray-400">
                         Aucune intervention
                       </div>
+                    ) : (
+                      dayInterventions.map((intervention) => {
+                        const clientName = intervention.client?.type === 'professionnel' && intervention.client?.company_name
+                          ? intervention.client.company_name
+                          : `${intervention.client?.first_name || ''} ${intervention.client?.last_name || 'Client'}`.trim();
+
+                        const fromGcal = intervention.created_from === 'gcal';
+
+                        return (
+                          <button
+                            key={intervention.id}
+                            onClick={() => router.push(`/dashboard/interventions/${intervention.id}`)}
+                            className={`w-full text-left p-3 rounded-lg border-l-4 transition-all hover:shadow-md ${
+                              fromGcal
+                                ? 'bg-purple-50 border-purple-500 hover:bg-purple-100'
+                                : 'bg-green-50 border-green-500 hover:bg-green-100'
+                            }`}
+                          >
+                            <div className="font-bold text-gray-900 text-base mb-1">
+                              {clientName}
+                            </div>
+                            {intervention.intervention_types_junction?.[0]?.intervention_type && (
+                              <div className="text-sm text-gray-600">
+                                {intervention.intervention_types_junction[0].intervention_type}
+                              </div>
+                            )}
+                            {intervention.description && (
+                              <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                {intervention.description}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })
                     )}
                   </div>
-                </button>
+                </div>
               );
             })
           )}
