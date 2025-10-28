@@ -1,90 +1,81 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { InterventionFormLazy } from '@/app/components/lazy';
+import { FormSkeleton } from '@/app/components/ui/Skeletons';
 
-type InterventionData = {
+type Client = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  mobile: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  postal_code: string | null;
+  notes: string | null;
+  type: string;
+  company_name: string | null;
+};
+
+type Intervention = {
   id: string;
   client_id: string;
+  technician_id: string | null;
   scheduled_date: string;
   status: string;
   description: string;
   labor_hours: number | null;
   labor_rate: number | null;
   travel_fee: number;
+  created_from: string | null;
+  intervention_types_junction: Array<{ intervention_type: string }>;
 };
 
 export default function EditInterventionPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  const [interventionData, setInterventionData] = useState<InterventionData>({
-    id: '',
-    client_id: '',
-    scheduled_date: '',
-    status: 'scheduled',
-    description: '',
-    labor_hours: null,
-    labor_rate: null,
-    travel_fee: 0,
-  });
+  const [client, setClient] = useState<Client | null>(null);
+  const [intervention, setIntervention] = useState<Intervention | null>(null);
+  const [isGcalImport, setIsGcalImport] = useState(false);
 
   useEffect(() => {
-    fetchIntervention();
+    fetchData();
   }, [params.id]);
 
-  const fetchIntervention = async () => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .schema('piscine_delmas_public')
-      .from('interventions')
-      .select('*')
-      .eq('id', params.id)
-      .single();
-
-    if (data) {
-      setInterventionData({
-        ...data,
-        scheduled_date: data.scheduled_date ? new Date(data.scheduled_date).toISOString().split('T')[0] : '',
-      });
-    }
-    if (error) {
-      setError('Intervention introuvable');
-    }
-    setLoading(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
-
+  const fetchData = async () => {
     try {
       const supabase = createClient();
-      const { error } = await supabase
+
+      // 🔍 Charger l'intervention avec toutes les données
+      const { data: interventionData, error: interventionError } = await supabase
         .schema('piscine_delmas_public')
         .from('interventions')
-        .update({
-          scheduled_date: interventionData.scheduled_date,
-          status: interventionData.status,
-          description: interventionData.description || null,
-          labor_hours: interventionData.labor_hours || null,
-          labor_rate: interventionData.labor_rate || null,
-          travel_fee: interventionData.travel_fee || 0,
-        })
-        .eq('id', params.id);
+        .select(`
+          *,
+          clients (*),
+          intervention_types_junction (intervention_type)
+        `)
+        .eq('id', params.id)
+        .single();
 
-      if (error) throw error;
+      if (interventionError) {
+        throw new Error('Intervention introuvable');
+      }
 
-      router.push(`/dashboard/interventions/${params.id}`);
-      router.refresh();
+      if (interventionData) {
+        setIntervention(interventionData);
+        setClient(interventionData.clients);
+        setIsGcalImport(interventionData.created_from === 'gcal');
+      }
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de la mise à jour');
+      setError(err.message || 'Erreur lors du chargement');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -96,132 +87,71 @@ export default function EditInterventionPage({ params }: { params: { id: string 
     );
   }
 
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
+          <p className="font-bold">❌ Erreur</p>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="space-y-4">
       {/* Header */}
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold mb-6"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Annuler
-      </button>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => router.back()}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isGcalImport ? '📅 Compléter l\'intervention' : '✏️ Modifier l\'intervention'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {isGcalImport && (
+              <span className="text-blue-600 font-medium">
+                ⚡ Importée depuis Google Calendar - Complétez toutes les informations
+              </span>
+            )}
+            {!isGcalImport && client && (
+              <span>Client: {client.first_name} {client.last_name}</span>
+            )}
+          </p>
+        </div>
+      </div>
 
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">
-        ✏️ Modifier l'intervention
-      </h1>
-
-      {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
-          {error}
+      {/* 🚨 Badge d'alerte pour les imports Google Calendar */}
+      {isGcalImport && (
+        <div className="bg-gradient-to-r from-blue-50 to-orange-50 border-2 border-blue-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📅</span>
+            <div>
+              <p className="font-bold text-blue-900">Intervention importée depuis Google Calendar</p>
+              <p className="text-sm text-blue-700">
+                Complétez les informations client, ajoutez la piscine, les types d'intervention et tous les détails nécessaires.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Date */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Date d'intervention *
-          </label>
-          <input
-            type="date"
-            required
-            value={interventionData.scheduled_date}
-            onChange={(e) => setInterventionData({ ...interventionData, scheduled_date: e.target.value })}
-            className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+      {/* Formulaire complet avec lazy loading */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <Suspense fallback={<FormSkeleton />}>
+          <InterventionFormLazy
+            existingClient={client}
+            existingIntervention={intervention}
+            mode="edit"
           />
-        </div>
-
-        {/* Statut */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Statut
-          </label>
-          <select
-            value={interventionData.status}
-            onChange={(e) => setInterventionData({ ...interventionData, status: e.target.value })}
-            className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-          >
-            <option value="scheduled">📅 Planifiée</option>
-            <option value="in_progress">⏳ En cours</option>
-            <option value="completed">✅ Terminée</option>
-            <option value="cancelled">❌ Annulée</option>
-          </select>
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Description
-          </label>
-          <textarea
-            value={interventionData.description || ''}
-            onChange={(e) => setInterventionData({ ...interventionData, description: e.target.value })}
-            rows={6}
-            className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-            placeholder="Détails de l'intervention..."
-          />
-        </div>
-
-        {/* Durée et taux horaire */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Durée (heures)
-            </label>
-            <input
-              type="number"
-              step="0.5"
-              min="0"
-              value={interventionData.labor_hours || ''}
-              onChange={(e) => setInterventionData({ ...interventionData, labor_hours: parseFloat(e.target.value) || null })}
-              className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              placeholder="2.5"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Taux horaire (€)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={interventionData.labor_rate || ''}
-              onChange={(e) => setInterventionData({ ...interventionData, labor_rate: parseFloat(e.target.value) || null })}
-              className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              placeholder="50.00"
-            />
-          </div>
-        </div>
-
-        {/* Frais de déplacement */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Frais de déplacement (€)
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={interventionData.travel_fee || ''}
-            onChange={(e) => setInterventionData({ ...interventionData, travel_fee: parseFloat(e.target.value) || 0 })}
-            className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-            placeholder="30.00"
-          />
-        </div>
-
-        {/* Bouton */}
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full bg-gradient-to-r from-green-600 to-green-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:from-green-700 hover:to-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? '⏳ Enregistrement...' : '✅ Enregistrer les modifications'}
-        </button>
-      </form>
+        </Suspense>
+      </div>
     </div>
   );
 }

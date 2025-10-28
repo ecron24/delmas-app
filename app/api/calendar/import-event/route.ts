@@ -1,5 +1,59 @@
-import { createClient } from '@/lib/supabase/server';
+// api/calendar/import-event/route.ts
+import { createWebhookClient } from '@/lib/supabase/webhook';
 import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * ✅ Fonction utilitaire pour parser les dates Google Calendar
+ */
+function parseGoogleCalendarDate(startData: any): string {
+  console.log('🔍 Parsing date Google Calendar:', startData);
+
+  let dateString: string;
+
+  // Cas 1: start est directement une string (cas le plus courant depuis n8n)
+  if (typeof startData === 'string') {
+    dateString = startData;
+  }
+  // Cas 2: start est un objet Google Calendar standard
+  else if (startData?.dateTime) {
+    dateString = startData.dateTime;
+  }
+  else if (startData?.date) {
+    // Événement toute la journée : ajouter une heure par défaut
+    dateString = `${startData.date}T09:00:00`;
+  }
+  else {
+    console.warn('⚠️ Format de date non reconnu:', startData);
+    return new Date().toISOString();
+  }
+
+  try {
+    const parsedDate = new Date(dateString);
+
+    if (isNaN(parsedDate.getTime())) {
+      throw new Error(`Date invalide: ${dateString}`);
+    }
+
+    const isoString = parsedDate.toISOString();
+    console.log('✅ Date convertie:', {
+      input: dateString,
+      output: isoString,
+      readable: parsedDate.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    });
+
+    return isoString;
+  } catch (error) {
+    console.error('❌ Erreur parsing date:', error);
+    return new Date().toISOString();
+  }
+}
 
 /**
  * Webhook pour importer des événements depuis Google Calendar
@@ -28,7 +82,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createClient();
+    const supabase = createWebhookClient();
 
     // 1️⃣ Vérifier si cet événement n'a pas déjà été importé
     const { data: existingIntervention } = await supabase
@@ -48,8 +102,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 2️⃣ Parser le nom du client et téléphone depuis la description
-    // Format attendu: "#NomClient #TéléphoneClient #Intervention\ndescription détaillée"
-    // Exemple: "#Delmou #0663589521 #Intervention\nintervention moteur de chauffe"
     let clientName = '';
     let clientPhone = '';
     let interventionDescription = '';
@@ -57,12 +109,20 @@ export async function POST(request: NextRequest) {
     if (description) {
       const lines = description.split('\n');
       const firstLine = lines[0] || '';
-      const hashtags = firstLine.match(/#(\w+)/g) || [];
+
+      // ✅ Regex améliorée pour gérer les espaces après #
+      const hashtags = firstLine.match(/#\s*(\S+)/g) || [];
+
+      console.log('🔍 Hashtags extraits:', hashtags);
 
       // Extraire le nom (premier hashtag qui n'est pas un numéro)
       for (const tag of hashtags) {
-        const value = tag.replace('#', '');
-        if (!/^\d+$/.test(value) && value.toLowerCase() !== 'intervention') {
+        // ✅ Nettoyer les espaces
+        const value = tag.replace(/^#\s*/, '').trim();
+        if (!/^\d+$/.test(value) &&
+            value.toLowerCase() !== 'intervention' &&
+            value.toLowerCase() !== 'devis' &&
+            value.toLowerCase() !== 'entretien') {
           clientName = value;
           break;
         }
@@ -70,12 +130,24 @@ export async function POST(request: NextRequest) {
 
       // Extraire le téléphone (hashtag qui est un numéro)
       for (const tag of hashtags) {
-        const value = tag.replace('#', '');
-        if (/^\d{10}$/.test(value)) {
+        // ✅ Nettoyer les espaces
+        const value = tag.replace(/^#\s*/, '').trim();
+        if (/^\d{10}$/.test(value)) { // Exactement 10 chiffres
           clientPhone = value;
           break;
         }
       }
+
+      // ✅ Fallback : chercher un numéro sans hashtag
+      if (!clientPhone) {
+        const phoneMatch = firstLine.match(/(\d{10})/);
+        if (phoneMatch) {
+          clientPhone = phoneMatch[1];
+        }
+      }
+
+      console.log('📞 Téléphone extrait:', clientPhone);
+      console.log('👤 Nom extrait:', clientName);
 
       // Description = tout après la première ligne
       interventionDescription = lines.slice(1).join('\n').trim() || summary;
@@ -83,7 +155,12 @@ export async function POST(request: NextRequest) {
 
     // Fallback: utiliser le summary si pas de hashtags dans description
     if (!clientName && summary) {
-      clientName = summary.split('-')[0].trim().replace(/^(M\.|Mme|Mr)\s+/i, '').trim();
+      clientName = summary.split(/[-\s]/)[0].trim().replace(/^(M\.|Mme|Mr)\s+/i, '').trim();
+    }
+
+    // ✅ S'assurer qu'on a un nom de client
+    if (!clientName) {
+      clientName = 'Client Inconnu';
     }
 
     // 3️⃣ Chercher si le client existe déjà
@@ -125,21 +202,42 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ✅ Préparer les données client avec validation téléphone
+      const clientData: any = {
+        type: 'particulier',
+        first_name: '',
+        last_name: clientName,
+        email: null,
+        address,
+        postal_code,
+        city,
+        notes: `Créé depuis Google Calendar le ${new Date().toLocaleDateString('fr-FR')}`,
+      };
+
+      // ✅ S'assurer qu'au moins phone OU mobile est renseigné
+      if (clientPhone && /^\d{10}$/.test(clientPhone)) {
+        // Si le numéro commence par 06/07, c'est un mobile
+        if (clientPhone.startsWith('06') || clientPhone.startsWith('07')) {
+          clientData.mobile = clientPhone;
+          clientData.phone = null;
+        } else {
+          // Sinon c'est un fixe
+          clientData.phone = clientPhone;
+          clientData.mobile = null;
+        }
+      } else {
+        // ✅ Fallback : mobile par défaut pour respecter la contrainte
+        clientData.mobile = '0000000000'; // Placeholder
+        clientData.phone = null;
+        console.warn('⚠️ Aucun téléphone valide trouvé, utilisation d\'un placeholder');
+      }
+
+      console.log('📋 Données client à insérer:', clientData);
+
       const { data: newClient, error: clientError } = await supabase
         .schema('piscine_delmas_public')
         .from('clients')
-        .insert({
-          type: 'particulier',
-          first_name: '', // Pas de prénom depuis Google Calendar
-          last_name: clientName,
-          email: null,
-          phone: null,
-          mobile: clientPhone || null,
-          address,
-          postal_code,
-          city,
-          notes: `Créé depuis Google Calendar le ${new Date().toLocaleDateString('fr-FR')}`,
-        })
+        .insert(clientData)
         .select()
         .single();
 
@@ -163,7 +261,15 @@ export async function POST(request: NextRequest) {
     const reference = `INT-${year}${month}-${random}`;
 
     // 5️⃣ Créer l'intervention
-    const scheduledDate = start.dateTime || start.date;
+    // ✅ Parser correctement la date depuis Google Calendar
+    const scheduledDate = parseGoogleCalendarDate(start);
+
+    // Debug final des dates
+    console.log('🔍 Debug dates finales:', {
+      rawStart: start,
+      parsedDate: scheduledDate,
+      readableDate: new Date(scheduledDate).toLocaleString('fr-FR')
+    });
 
     const { data: newIntervention, error: interventionError } = await supabase
       .schema('piscine_delmas_public')
@@ -171,7 +277,7 @@ export async function POST(request: NextRequest) {
       .insert({
         reference,
         client_id: clientId,
-        scheduled_date: scheduledDate,
+        scheduled_date: scheduledDate, // ✅ Date correctement formatée
         status: 'scheduled',
         description: interventionDescription || description || summary,
         gcal_event_id: gcalEventId,
@@ -195,14 +301,21 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Intervention créée:', newIntervention.reference);
 
-    return NextResponse.json({
-      success: true,
-      message: '✅ Intervention importée depuis Google Calendar',
-      intervention: {
-        id: newIntervention.id,
-        reference: newIntervention.reference,
-        client_id: clientId,
-      },
+          // Dans route.ts après création de l'intervention
+      return NextResponse.json({
+        success: true,
+        message: '✅ Intervention importée depuis Google Calendar',
+        intervention: {
+          id: newIntervention.id,
+          reference: newIntervention.reference,
+          edit_url: `/dashboard/interventions/${newIntervention.id}/edit`, // ✅ URL d'édition
+        },
+        debug: {
+        extractedPhone: clientPhone,
+        extractedName: clientName,
+        isNewClient: !existingClients?.length,
+        parsedDate: new Date(scheduledDate).toLocaleString('fr-FR'),
+      }
     });
 
   } catch (error: any) {

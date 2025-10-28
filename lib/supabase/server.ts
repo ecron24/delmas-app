@@ -1,3 +1,4 @@
+// lib/supabase/server.ts
 import { createServerClient as _createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -22,6 +23,9 @@ export function createServerClient() {
     }
   );
 }
+
+// ✅ Alias pour compatibilité
+export const createClient = createServerClient;
 
 // ✅ Helper pour requêtes sur le schéma piscine_delmas_public
 export function fromDelmas(table: string) {

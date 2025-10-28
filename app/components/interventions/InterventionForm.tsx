@@ -16,21 +16,48 @@ type Client = {
   civility: string;
   first_name: string;
   last_name: string;
-  company_name: string;
-  email: string;
-  phone: string;
-  mobile: string;
-  address: string;
-  postal_code: string;
-  city: string;
-  notes: string;
+  company_name: string | null;
+  email: string | null;
+  phone: string | null;
+  mobile: string | null;
+  address: string | null;
+  postal_code: string | null;
+  city: string | null;
+  notes: string | null;
+};
+
+type Intervention = {
+  id: string;
+  client_id: string;
+  technician_id: string | null;
+  scheduled_date: string;
+  status: string;
+  description: string;
+  labor_hours: number | null;
+  labor_rate: number | null;
+  travel_fee: number;
+  created_from: string | null;
+  intervention_types_junction: Array<{ intervention_type: string }>;
+  pool_id?: string | null;
+  task_template_id?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  travel_distance_km?: number | null;
+  assigned_to?: string | null;
+  technician_notes?: string | null;
 };
 
 type InterventionFormProps = {
   existingClient?: Client | null;
+  existingIntervention?: Intervention | null;
+  mode?: 'create' | 'edit';
 };
 
-export function InterventionForm({ existingClient }: InterventionFormProps) {
+export function InterventionForm({
+  existingClient = null,
+  existingIntervention = null,
+  mode = 'create'
+}: InterventionFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +65,13 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
   const [loadingTechnicians, setLoadingTechnicians] = useState(true);
   const [photos, setPhotos] = useState<File[]>([]);
 
+  // 🎯 Mode édition : intervention Google Calendar qui peut être complétée
+  const isGcalImport = existingIntervention?.created_from === 'gcal';
+  const isEdit = mode === 'edit';
+
+  // 📝 États pour le client (modifiable si import Google Calendar)
   const [clientData, setClientData] = useState<Client>({
+    id: existingClient?.id,
     type: existingClient?.type || 'particulier',
     civility: existingClient?.civility || 'M.',
     first_name: existingClient?.first_name || '',
@@ -53,10 +86,12 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
     notes: existingClient?.notes || '',
   });
 
+  // 🏊 États pour la piscine
   const [poolMode, setPoolMode] = useState<'select' | 'create'>('select');
   const [selectedPool, setSelectedPool] = useState<any>(null);
   const [poolData, setPoolData] = useState<any>(null);
 
+  // 🔧 États pour l'intervention
   const [interventionData, setInterventionData] = useState({
     scheduled_date: '',
     scheduled_time_start: '',
@@ -72,12 +107,29 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
     description: '',
     products: [] as any[],
     intervention_notes: '',
+    status: 'scheduled',
   });
 
-  useEffect(() => {
-    loadTechnicians();
-  }, []);
+  // 🛠️ FONCTIONS UTILITAIRES
+  const safeFormatDate = (dateString: string | null) => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toISOString().split('T')[0];
+    } catch {
+      return '';
+    }
+  };
 
+  const safeFormatTime = (dateString: string | null) => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toTimeString().slice(0, 5);
+    } catch {
+      return '';
+    }
+  };
+
+  // 📊 CHARGEMENT DES DONNÉES
   const loadTechnicians = async () => {
     try {
       const supabase = createClient();
@@ -97,6 +149,87 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
     }
   };
 
+  const loadExistingData = async (interventionId: string) => {
+    try {
+      const supabase = createClient();
+
+      // 🏊 Charger la piscine associée
+      if (existingIntervention?.pool_id) {
+        const { data: poolData } = await supabase
+          .schema('piscine_delmas_public')
+          .from('client_pools')
+          .select(`
+            *,
+            pool_types (name)
+          `)
+          .eq('id', existingIntervention.pool_id)
+          .single();
+
+        if (poolData) {
+          setSelectedPool(poolData);
+        }
+      }
+
+      // 📦 Charger les produits existants
+      const { data: existingProducts } = await supabase
+        .schema('piscine_delmas_public')
+        .from('intervention_items')
+        .select('*')
+        .eq('intervention_id', interventionId);
+
+      if (existingProducts && existingProducts.length > 0) {
+        const formattedProducts = existingProducts.map(item => ({
+          product_id: item.product_id,
+          product_name: item.product_name,
+          quantity: item.quantity,
+          unit: item.unit,
+        }));
+        setInterventionData(prev => ({
+          ...prev,
+          products: formattedProducts
+        }));
+      }
+
+    } catch (error) {
+      console.error('Erreur chargement données existantes:', error);
+    }
+  };
+
+  // 🎯 EFFECTS
+  useEffect(() => {
+    loadTechnicians();
+  }, []);
+
+  useEffect(() => {
+    if (isEdit && existingIntervention?.id) {
+      loadExistingData(existingIntervention.id);
+    }
+  }, [isEdit, existingIntervention?.id]);
+
+  // 🎯 Préremplissage en mode édition
+  useEffect(() => {
+    if (isEdit && existingIntervention) {
+      setInterventionData({
+        scheduled_date: safeFormatDate(existingIntervention.scheduled_date),
+        scheduled_time_start: safeFormatTime(existingIntervention.started_at),
+        scheduled_time_end: safeFormatTime(existingIntervention.completed_at),
+        intervention_types: existingIntervention.intervention_types_junction?.map(t => t.intervention_type) || [],
+        selected_templates: [],
+        technician: existingIntervention.assigned_to || existingIntervention.technician_id || '',
+        travel_type: 'forfait',
+        travel_distance_km: existingIntervention.travel_distance_km?.toString() || '',
+        travel_fee: existingIntervention.travel_fee?.toString() || '',
+        labor_hours: existingIntervention.labor_hours?.toString() || '',
+        labor_rate: existingIntervention.labor_rate?.toString() || '',
+        description: existingIntervention.description || '',
+        products: [],
+        intervention_notes: existingIntervention.technician_notes || '',
+        status: existingIntervention.status || 'scheduled',
+      });
+    }
+  }, [isEdit, existingIntervention]);
+
+  // 🎯 HANDLERS
   const handleTemplateChange = (templates: any[]) => {
     if (templates.length > 0) {
       const totalHours = templates.reduce((sum, t) => sum + t.estimated_duration_hours, 0);
@@ -125,7 +258,6 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
 
     for (const photo of photoFiles) {
       try {
-        // Upload vers Storage
         const fileName = `${interventionId}/${Date.now()}-${photo.name}`;
         const { error: uploadError } = await supabase.storage
           .from('intervention-photos')
@@ -133,12 +265,10 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
 
         if (uploadError) throw uploadError;
 
-        // Récupérer l'URL publique
         const { data: { publicUrl } } = supabase.storage
           .from('intervention-photos')
           .getPublicUrl(fileName);
 
-        // Enregistrer dans la table
         await supabase
           .schema('piscine_delmas_public')
           .from('intervention_photos')
@@ -151,7 +281,6 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
         successCount++;
       } catch (error) {
         console.error(`❌ Erreur upload ${photo.name}:`, error);
-        // Continue avec les autres photos
       }
     }
 
@@ -165,22 +294,88 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
     setLoading(true);
     setError('');
 
+    // ✅ Validations
+    if (!interventionData.scheduled_date) {
+      setError('La date d\'intervention est obligatoire');
+      setLoading(false);
+      return;
+    }
+
+    if (!interventionData.description.trim()) {
+      setError('La description des travaux est obligatoire');
+      setLoading(false);
+      return;
+    }
+
+    if (interventionData.intervention_types.length === 0) {
+      setError('Sélectionnez au moins un type d\'intervention');
+      setLoading(false);
+      return;
+    }
+
+    // Validation client pour nouveaux clients
+    if (!existingClient) {
+      if (!clientData.last_name.trim()) {
+        setError('Le nom du client est obligatoire');
+        setLoading(false);
+        return;
+      }
+
+      if (clientData.type === 'professionnel' && !clientData.company_name?.trim()) {
+        setError('La raison sociale est obligatoire pour les professionnels');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
 
-      if (interventionData.intervention_types.length === 0) {
-        throw new Error('Sélectionnez au moins un type d\'intervention');
-      }
-
       let clientId = existingClient?.id;
 
-      if (!existingClient) {
+      // 👤 GESTION CLIENT
+      if (isEdit && existingClient) {
+        if (isGcalImport) {
+          const { error: clientError } = await supabase
+            .schema('piscine_delmas_public')
+            .from('clients')
+            .update({
+              type: clientData.type,
+              civility: clientData.civility,
+              first_name: clientData.first_name,
+              last_name: clientData.last_name,
+              company_name: clientData.company_name,
+              email: clientData.email,
+              phone: clientData.phone,
+              mobile: clientData.mobile,
+              address: clientData.address,
+              postal_code: clientData.postal_code,
+              city: clientData.city,
+              notes: clientData.notes,
+            })
+            .eq('id', existingClient.id);
+
+          if (clientError) throw clientError;
+        }
+        clientId = existingClient.id;
+      } else if (!existingClient) {
         const { data: newClient, error: clientError } = await supabase
           .schema('piscine_delmas_public')
           .from('clients')
           .insert({
-            ...clientData,
+            type: clientData.type,
+            civility: clientData.civility,
+            first_name: clientData.first_name,
+            last_name: clientData.last_name,
+            company_name: clientData.company_name,
+            email: clientData.email,
+            phone: clientData.phone,
+            mobile: clientData.mobile,
+            address: clientData.address,
+            postal_code: clientData.postal_code,
+            city: clientData.city,
+            notes: clientData.notes,
             created_by: user?.id,
           })
           .select()
@@ -190,6 +385,7 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
         clientId = newClient.id;
       }
 
+      // 🏊 GESTION PISCINE
       let poolId = selectedPool?.id;
 
       if (poolMode === 'create' && poolData && poolData.pool_type_id) {
@@ -214,44 +410,88 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
         poolId = newPool.id;
       }
 
-      const { data: newIntervention, error: interventionError } = await supabase
-        .schema('piscine_delmas_public')
-        .from('interventions')
-        .insert({
-          client_id: clientId,
-          pool_id: poolId || null,
-          status: 'scheduled',
-          task_template_id: interventionData.selected_templates.length > 0
-            ? interventionData.selected_templates[0].id
-            : null,
-          scheduled_date: interventionData.scheduled_date,
-          started_at: interventionData.scheduled_time_start
-            ? `${interventionData.scheduled_date}T${interventionData.scheduled_time_start}:00`
-            : null,
-          completed_at: interventionData.scheduled_time_end
-            ? `${interventionData.scheduled_date}T${interventionData.scheduled_time_end}:00`
-            : null,
-          description: interventionData.description,
-          travel_distance_km: interventionData.travel_distance_km ? parseFloat(interventionData.travel_distance_km) : null,
-          travel_fee: interventionData.travel_fee ? parseFloat(interventionData.travel_fee) : 0,
-          labor_hours: interventionData.labor_hours ? parseFloat(interventionData.labor_hours) : null,
-          labor_rate: interventionData.labor_rate ? parseFloat(interventionData.labor_rate) : null,
-          assigned_to: interventionData.technician || null,
-          technician_notes: interventionData.intervention_notes,
-          created_by: user?.id,
-        })
-        .select()
-        .single();
+      // 🔧 GESTION INTERVENTION
+      let interventionId: string;
 
-      if (interventionError) throw interventionError;
+      if (isEdit && existingIntervention) {
+        const { error: interventionError } = await supabase
+          .schema('piscine_delmas_public')
+          .from('interventions')
+          .update({
+            pool_id: poolId || null,
+            status: interventionData.status,
+            task_template_id: interventionData.selected_templates.length > 0
+              ? interventionData.selected_templates[0].id
+              : null,
+            scheduled_date: interventionData.scheduled_date,
+            started_at: interventionData.scheduled_time_start
+              ? `${interventionData.scheduled_date}T${interventionData.scheduled_time_start}:00`
+              : null,
+            completed_at: interventionData.scheduled_time_end
+              ? `${interventionData.scheduled_date}T${interventionData.scheduled_time_end}:00`
+              : null,
+            description: interventionData.description,
+            travel_distance_km: interventionData.travel_distance_km ? parseFloat(interventionData.travel_distance_km) : null,
+            travel_fee: interventionData.travel_fee ? parseFloat(interventionData.travel_fee) : 0,
+            labor_hours: interventionData.labor_hours ? parseFloat(interventionData.labor_hours) : null,
+            labor_rate: interventionData.labor_rate ? parseFloat(interventionData.labor_rate) : null,
+            assigned_to: interventionData.technician || null,
+            technician_notes: interventionData.intervention_notes,
+          })
+          .eq('id', existingIntervention.id);
+
+        if (interventionError) throw interventionError;
+
+        // Supprimer les anciens types d'intervention
+        await supabase
+          .schema('piscine_delmas_public')
+          .from('intervention_types_junction')
+          .delete()
+          .eq('intervention_id', existingIntervention.id);
+
+        interventionId = existingIntervention.id;
+      } else {
+        const { data: newIntervention, error: interventionError } = await supabase
+          .schema('piscine_delmas_public')
+          .from('interventions')
+          .insert({
+            client_id: clientId,
+            pool_id: poolId || null,
+            status: interventionData.status,
+            task_template_id: interventionData.selected_templates.length > 0
+              ? interventionData.selected_templates[0].id
+              : null,
+            scheduled_date: interventionData.scheduled_date,
+            started_at: interventionData.scheduled_time_start
+              ? `${interventionData.scheduled_date}T${interventionData.scheduled_time_start}:00`
+              : null,
+            completed_at: interventionData.scheduled_time_end
+              ? `${interventionData.scheduled_date}T${interventionData.scheduled_time_end}:00`
+              : null,
+            description: interventionData.description,
+            travel_distance_km: interventionData.travel_distance_km ? parseFloat(interventionData.travel_distance_km) : null,
+            travel_fee: interventionData.travel_fee ? parseFloat(interventionData.travel_fee) : 0,
+            labor_hours: interventionData.labor_hours ? parseFloat(interventionData.labor_hours) : null,
+            labor_rate: interventionData.labor_rate ? parseFloat(interventionData.labor_rate) : null,
+            assigned_to: interventionData.technician || null,
+            technician_notes: interventionData.intervention_notes,
+            created_by: user?.id,
+          })
+          .select()
+          .single();
+
+        if (interventionError) throw interventionError;
+        interventionId = newIntervention.id;
+      }
 
       // Upload des photos
       if (photos.length > 0) {
-        await uploadPhotos(newIntervention.id, photos);
+        await uploadPhotos(interventionId, photos);
       }
 
+      // 🔧 Insérer les nouveaux types d'intervention
       const typesData = interventionData.intervention_types.map(type => ({
-        intervention_id: newIntervention.id,
+        intervention_id: interventionId,
         intervention_type: type,
       }));
 
@@ -262,7 +502,17 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
 
       if (typesError) throw typesError;
 
+      // 📦 Gestion optimisée des produits
       if (interventionData.products.length > 0) {
+        // Supprimer tous les anciens produits en mode édition
+        if (isEdit) {
+          await supabase
+            .schema('piscine_delmas_public')
+            .from('intervention_items')
+            .delete()
+            .eq('intervention_id', interventionId);
+        }
+
         const productIds = interventionData.products.map(p => p.product_id);
         const { data: productsData } = await supabase
           .schema('piscine_delmas_public')
@@ -273,7 +523,7 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
         const interventionItems = interventionData.products.map(p => {
           const product = productsData?.find(prod => prod.id === p.product_id);
           return {
-            intervention_id: newIntervention.id,
+            intervention_id: interventionId,
             product_id: p.product_id,
             product_name: product?.name || p.product_name,
             quantity: p.quantity,
@@ -288,18 +538,31 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
           .insert(interventionItems);
 
         if (itemsError) throw itemsError;
+      } else if (isEdit) {
+        // Supprimer tous les produits si la liste est vide en mode édition
+        await supabase
+          .schema('piscine_delmas_public')
+          .from('intervention_items')
+          .delete()
+          .eq('intervention_id', interventionId);
       }
 
-      router.push('/dashboard/interventions');
+      // 🎯 Redirection
+      if (isEdit) {
+        router.push(`/dashboard/interventions/${interventionId}`);
+      } else {
+        router.push('/dashboard/interventions');
+      }
       router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de la création');
+      setError(err.message || (isEdit ? 'Erreur lors de la mise à jour' : 'Erreur lors de la création'));
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ RETURN - JSX COMPLET
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
@@ -314,7 +577,7 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
           👤 Informations Client
         </h2>
 
-        {existingClient && (
+        {existingClient && !isGcalImport && (
           <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
             <p className="text-sm text-blue-700">
               ✅ Client existant - Informations en lecture seule
@@ -329,25 +592,25 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={!!existingClient}
+              disabled={existingClient && !isGcalImport}
               onClick={() => setClientData({ ...clientData, type: 'particulier' })}
               className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
                 clientData.type === 'particulier'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700'
-              } ${existingClient ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${(existingClient && !isGcalImport) ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               Particulier
             </button>
             <button
               type="button"
-              disabled={!!existingClient}
+              disabled={existingClient && !isGcalImport}
               onClick={() => setClientData({ ...clientData, type: 'professionnel' })}
               className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
                 clientData.type === 'professionnel'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700'
-              } ${existingClient ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${(existingClient && !isGcalImport) ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               Professionnel
             </button>
@@ -362,8 +625,8 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
             <input
               type="text"
               required
-              disabled={!!existingClient}
-              value={clientData.company_name}
+              disabled={existingClient && !isGcalImport}
+              value={clientData.company_name || ''}
               onChange={(e) => setClientData({ ...clientData, company_name: e.target.value })}
               className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
               placeholder="Nom de l'entreprise"
@@ -378,7 +641,7 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
             </label>
             <select
               required
-              disabled={!!existingClient}
+              disabled={existingClient && !isGcalImport}
               value={clientData.civility}
               onChange={(e) => setClientData({ ...clientData, civility: e.target.value })}
               className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
@@ -395,7 +658,7 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
             <input
               type="text"
               required
-              disabled={!!existingClient}
+              disabled={existingClient && !isGcalImport}
               value={clientData.last_name}
               onChange={(e) => setClientData({ ...clientData, last_name: e.target.value })}
               className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
@@ -410,7 +673,7 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
           </label>
           <input
             type="text"
-            disabled={!!existingClient}
+            disabled={existingClient && !isGcalImport}
             value={clientData.first_name}
             onChange={(e) => setClientData({ ...clientData, first_name: e.target.value })}
             className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
@@ -425,8 +688,8 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
             </label>
             <input
               type="email"
-              disabled={!!existingClient}
-              value={clientData.email}
+              disabled={existingClient && !isGcalImport}
+              value={clientData.email || ''}
               onChange={(e) => setClientData({ ...clientData, email: e.target.value })}
               className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
               placeholder="email@exemple.com"
@@ -434,12 +697,12 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Téléphone
+              Téléphone fixe
             </label>
             <input
               type="tel"
-              disabled={!!existingClient}
-              value={clientData.phone}
+              disabled={existingClient && !isGcalImport}
+              value={clientData.phone || ''}
               onChange={(e) => setClientData({ ...clientData, phone: e.target.value })}
               className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
               placeholder="01 23 45 67 89"
@@ -449,12 +712,26 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Mobile
+          </label>
+          <input
+            type="tel"
+            disabled={existingClient && !isGcalImport}
+            value={clientData.mobile || ''}
+            onChange={(e) => setClientData({ ...clientData, mobile: e.target.value })}
+            className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
+            placeholder="06 12 34 56 78"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
             Adresse
           </label>
           <input
             type="text"
-            disabled={!!existingClient}
-            value={clientData.address}
+            disabled={existingClient && !isGcalImport}
+            value={clientData.address || ''}
             onChange={(e) => setClientData({ ...clientData, address: e.target.value })}
             className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
             placeholder="15 rue de la Piscine"
@@ -468,8 +745,8 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
             </label>
             <input
               type="text"
-              disabled={!!existingClient}
-              value={clientData.postal_code}
+              disabled={existingClient && !isGcalImport}
+              value={clientData.postal_code || ''}
               onChange={(e) => setClientData({ ...clientData, postal_code: e.target.value })}
               className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
               placeholder="75001"
@@ -481,8 +758,8 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
             </label>
             <input
               type="text"
-              disabled={!!existingClient}
-              value={clientData.city}
+              disabled={existingClient && !isGcalImport}
+              value={clientData.city || ''}
               onChange={(e) => setClientData({ ...clientData, city: e.target.value })}
               className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
               placeholder="Paris"
@@ -495,8 +772,8 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
             Notes client
           </label>
           <textarea
-            disabled={!!existingClient}
-            value={clientData.notes}
+            disabled={existingClient && !isGcalImport}
+            value={clientData.notes || ''}
             onChange={(e) => setClientData({ ...clientData, notes: e.target.value })}
             rows={3}
             className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-50"
@@ -530,8 +807,8 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
 
         <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg">
           <p className="text-sm text-blue-700">
-            💡 <strong>La piscine est optionnelle</strong> - Vous pouvez créer l'intervention sans renseigner de piscine.
-            {!existingClient && (
+            💡 <strong>La piscine est optionnelle</strong> - Vous pouvez {isEdit ? 'modifier' : 'créer'} l'intervention sans renseigner de piscine.
+            {!existingClient && !isEdit && (
               <span className="block mt-1">
                 Pour un nouveau client, les informations piscine seront associées automatiquement après création du client.
               </span>
@@ -539,11 +816,11 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
           </p>
         </div>
 
-        {existingClient ? (
+        {existingClient || isEdit ? (
           <>
             {poolMode === 'select' ? (
               <PoolSelector
-                clientId={existingClient.id || null}
+                clientId={existingClient?.id || null}
                 selectedPool={selectedPool}
                 onPoolSelect={setSelectedPool}
                 onCreateNew={() => setPoolMode('create')}
@@ -665,6 +942,25 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
             />
           </div>
         </div>
+
+        {/* Statut (uniquement en mode édition) */}
+        {isEdit && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Statut
+            </label>
+            <select
+              value={interventionData.status}
+              onChange={(e) => setInterventionData({ ...interventionData, status: e.target.value })}
+              className="w-full px-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+            >
+              <option value="scheduled">📅 Planifiée</option>
+              <option value="in_progress">⏳ En cours</option>
+              <option value="completed">✅ Terminée</option>
+              <option value="cancelled">❌ Annulée</option>
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -867,13 +1163,35 @@ export function InterventionForm({ existingClient }: InterventionFormProps) {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Création en cours...
+              {isEdit ? 'Mise à jour...' : 'Création en cours...'}
             </span>
           ) : (
-            '✅ Créer l\'intervention'
+            <>
+              {isEdit ? (
+                isGcalImport ? (
+                  '🎯 Finaliser l\'intervention'
+                ) : (
+                  '✅ Enregistrer les modifications'
+                )
+              ) : (
+                '✅ Créer l\'intervention'
+              )}
+            </>
           )}
         </button>
       </div>
+
+      {/* INFO BOX POUR ÉDITION */}
+      {isEdit && (
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>💡 Info :</strong> {isGcalImport
+              ? 'Une fois finalisée, cette intervention sera complètement opérationnelle avec toutes ses informations.'
+              : 'Les modifications seront sauvegardées et visibles immédiatement dans le planning.'
+            }
+          </p>
+        </div>
+      )}
     </form>
   );
 }

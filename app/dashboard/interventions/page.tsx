@@ -453,8 +453,10 @@ export default function InterventionsPage() {
               ) : (
                 <div className="space-y-2">
                   {inProgressInterventions.map((intervention) => (
-                    <InterventionCard key={intervention.id} intervention={intervention} />
-                  ))}
+                  <Suspense key={intervention.id} fallback={<CardSkeleton />}>
+                    <InterventionCardLazy intervention={intervention} />
+                  </Suspense>
+                ))}
                 </div>
               )}
             </div>

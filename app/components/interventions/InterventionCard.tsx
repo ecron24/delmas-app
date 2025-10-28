@@ -25,6 +25,7 @@ type Intervention = {
   intervention_types_junction: Array<{ intervention_type: string }>;
   synced_to_gcal?: boolean;
   created_from?: 'app' | 'gcal';
+  technician_id?: string | null;
 };
 
 export function InterventionCard({ intervention }: { intervention: Intervention }) {
@@ -132,6 +133,27 @@ export function InterventionCard({ intervention }: { intervention: Intervention 
       className={`w-full bg-white rounded-xl shadow-sm p-5 border-2 hover:shadow-lg transition-all active:scale-[0.98] text-left ${currentStatus.cardClass}`}
     >
       {/* ========================================
+          🚨 BADGES D'ALERTE EN HAUT
+          ======================================== */}
+      {((intervention.created_from === 'gcal' && intervention.status === 'scheduled') || !intervention.technician_id) && (
+        <div className="flex flex-wrap gap-2 mb-3 p-2 bg-gradient-to-r from-blue-50 to-orange-50 rounded-lg border border-blue-200">
+          {/* Badge : Intervention à compléter */}
+          {intervention.created_from === 'gcal' && intervention.status === 'scheduled' && (
+            <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs rounded-full font-bold border border-blue-300 flex items-center gap-1 animate-pulse">
+              📅 À compléter
+            </span>
+          )}
+
+          {/* Badge : Technicien à assigner */}
+          {!intervention.technician_id && (
+            <span className="px-3 py-1.5 bg-orange-100 text-orange-700 text-xs rounded-full font-bold border border-orange-300 flex items-center gap-1">
+              🔧 Technicien à assigner
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ========================================
           HEADER : Client + Statut
           ======================================== */}
       <div className="flex items-start justify-between mb-3">
@@ -219,14 +241,14 @@ export function InterventionCard({ intervention }: { intervention: Intervention 
 
             {/* Badge Google Calendar Sync */}
             {intervention.synced_to_gcal && (
-              <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
+              <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200" title="Synchronisé avec Google Calendar">
                 📆
               </span>
             )}
 
             {/* Badge intervention créée depuis Google Calendar */}
             {intervention.created_from === 'gcal' && (
-              <span className="px-2 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+              <span className="px-2 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200" title="Importée depuis Google Calendar">
                 🔗
               </span>
             )}
@@ -248,14 +270,17 @@ export function InterventionCard({ intervention }: { intervention: Intervention 
         <div className="mt-3 pt-3 border-t border-gray-100">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600 font-medium">
-              {currentStatus.actionLabel}
+              {intervention.created_from === 'gcal' && intervention.status === 'scheduled'
+                ? '✏️ Compléter la fiche →'
+                : currentStatus.actionLabel
+              }
             </span>
 
             {/* Indicateur visuel selon statut */}
             {intervention.status === 'scheduled' && (
               <span className="flex items-center gap-1 text-green-600 font-semibold">
                 <span className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></span>
-                Prête à démarrer
+                {intervention.created_from === 'gcal' ? 'À finaliser' : 'Prête à démarrer'}
               </span>
             )}
 

@@ -23,24 +23,6 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const pathname = request.nextUrl.pathname;
-
-  // ✅ WEBHOOK avec vérification de token
-const webhookPaths = ['/api/calendar/import-event'];
-const isWebhookPath = webhookPaths.some(path => pathname.startsWith(path));
-
-if (isWebhookPath) {
-  // Vérifier le token d'autorisation pour les webhooks
-  const authHeader = request.headers.get('authorization');
-  const expectedToken = `Bearer ${process.env.CALENDAR_WEBHOOK_SECRET}`;
-
-  if (authHeader !== expectedToken) {
-    return NextResponse.json({ error: 'Unauthorized webhook' }, { status: 401 });
-  }
-
-  return response; // Webhook autorisé
-}
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -62,6 +44,8 @@ if (isWebhookPath) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+
+  const pathname = request.nextUrl.pathname;
 
   // Pages publiques
   const publicPaths = ['/login', '/unauthorized'];
