@@ -43,14 +43,27 @@ export async function POST(
     if (!n8nWebhookUrl) {
       console.error('Variable N8N_WEBHOOK_VALIDATE_INTERVENTION non définie');
       return NextResponse.json(
-        { error: 'Configuration webhook manquante' },
+        { success: false, error: 'Configuration webhook manquante' },
         { status: 500 }
       );
     }
 
+    // Préparer les headers avec authentification
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Ajouter l'authentification par header si configurée
+    const authHeaderName = process.env.N8N_WEBHOOK_AUTH_HEADER_NAME;
+    const authHeaderValue = process.env.N8N_WEBHOOK_AUTH_HEADER_VALUE;
+
+    if (authHeaderName && authHeaderValue) {
+      headers[authHeaderName] = authHeaderValue;
+    }
+
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         gcal_event_id: intervention.gcal_event_id,
         reference: intervention.reference,
@@ -60,14 +73,19 @@ export async function POST(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Erreur webhook n8n:', errorText);
+      console.error('Erreur webhook n8n:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Erreur mise à jour Google Calendar', details: errorText },
-        { status: 500 }
+        { success: false, error: 'Erreur mise à jour Google Calendar', details: errorText, status: response.status },
+        { status: 200 } // Retourner 200 pour que le frontend puisse parser le JSON
       );
     }
 
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch (e) {
+      result = { raw: await response.text() };
+    }
 
     return NextResponse.json({
       success: true,
