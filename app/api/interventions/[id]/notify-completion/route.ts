@@ -22,38 +22,39 @@ export async function POST(
       .single();
 
     if (error || !intervention) {
+      console.error('❌ Intervention non trouvée:', params.id, error);
       return NextResponse.json(
-        { error: 'Intervention non trouvée' },
+        { success: false, error: 'Intervention non trouvée' },
         { status: 404 }
       );
     }
 
     // Vérifier qu'il y a un event Google Calendar lié
     if (!intervention.gcal_event_id) {
-      console.warn(`Intervention ${params.id} n'a pas d'event Google Calendar`);
-      return NextResponse.json(
-        { success: false, message: 'Pas d\'event Google Calendar lié' },
-        { status: 200 }
-      );
+      console.warn(`⚠️ Intervention ${params.id} n'a pas d'event Google Calendar`);
+      return NextResponse.json({
+        success: true,
+        message: 'Pas d\'event Google Calendar lié',
+        calendar_updated: false
+      });
     }
 
-    // Appeler le webhook n8n
+    // 🎯 URL Webhook n8n (CORRIGÉE)
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_VALIDATE_INTERVENTION;
 
     if (!n8nWebhookUrl) {
-      console.error('Variable N8N_WEBHOOK_VALIDATE_INTERVENTION non définie');
+      console.error('❌ Variable N8N_WEBHOOK_VALIDATE_INTERVENTION non définie');
       return NextResponse.json(
         { success: false, error: 'Configuration webhook manquante' },
         { status: 500 }
       );
     }
 
-    // Préparer les headers avec authentification
+    // 🔐 Headers avec authentification (CORRIGÉS)
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    // Ajouter l'authentification par header si configurée
     const authHeaderName = process.env.N8N_WEBHOOK_AUTH_HEADER_NAME;
     const authHeaderValue = process.env.N8N_WEBHOOK_AUTH_HEADER_VALUE;
 
@@ -61,6 +62,13 @@ export async function POST(
       headers[authHeaderName] = authHeaderValue;
     }
 
+    console.log('🚀 Envoi vers n8n:', {
+      url: n8nWebhookUrl,
+      headers: Object.keys(headers),
+      gcal_event_id: intervention.gcal_event_id
+    });
+
+    // 📡 Appel du webhook
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
       headers,
@@ -73,30 +81,35 @@ export async function POST(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Erreur webhook n8n:', response.status, errorText);
-      return NextResponse.json(
-        { success: false, error: 'Erreur mise à jour Google Calendar', details: errorText, status: response.status },
-        { status: 200 } // Retourner 200 pour que le frontend puisse parser le JSON
-      );
+      console.error('❌ Erreur webhook n8n:', response.status, errorText);
+      return NextResponse.json({
+        success: false,
+        error: 'Erreur mise à jour Google Calendar',
+        details: errorText,
+        status: response.status
+      });
     }
 
     let result;
     try {
       result = await response.json();
+      console.log('✅ Réponse n8n:', result);
     } catch (e) {
       result = { raw: await response.text() };
+      console.log('✅ Réponse n8n (texte):', result);
     }
 
     return NextResponse.json({
       success: true,
       message: '✅ Google Calendar mis à jour',
+      calendar_updated: true,
       data: result,
     });
 
   } catch (error: any) {
-    console.error('Erreur notify-completion:', error);
+    console.error('❌ Erreur notify-completion:', error);
     return NextResponse.json(
-      { error: error.message },
+      { success: false, error: error.message },
       { status: 500 }
     );
   }

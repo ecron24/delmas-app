@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -19,6 +19,46 @@ export function InterventionActions({
 }: InterventionActionsProps) {
   const router = useRouter();
   const [actionLoading, setActionLoading] = useState(false);
+
+  // 📧 États pour l'email de confirmation
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(true);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSentAt, setEmailSentAt] = useState<string | null>(null);
+
+  // 🔍 Vérifier le statut de l'email au chargement
+  useEffect(() => {
+    if (status === 'completed') {
+      checkEmailStatus();
+    }
+  }, [interventionId, status]);
+
+  const checkEmailStatus = async () => {
+    try {
+      const supabase = createClient();
+
+      const { data: emailLog } = await supabase
+        .schema('piscine_delmas_public')
+        .from('email_logs')
+        .select('status, sent_at')
+        .eq('intervention_id', interventionId)
+        .eq('status', 'sent')
+        .maybeSingle();
+
+      if (emailLog) {
+        setEmailSent(true);
+        setEmailSentAt(emailLog.sent_at);
+      } else {
+        setEmailSent(false);
+        setEmailSentAt(null);
+      }
+    } catch (error) {
+      console.error('❌ Erreur vérification email:', error);
+      setEmailSent(false);
+    } finally {
+      setEmailLoading(false);
+    }
+  };
 
   const handleStartIntervention = async () => {
     setActionLoading(true);
@@ -42,16 +82,42 @@ export function InterventionActions({
   };
 
   const handleSendConfirmation = async () => {
+    if (emailSent) {
+      alert('✅ Email de confirmation déjà envoyé !');
+      return;
+    }
+
     if (!confirm('📧 Envoyer l\'email de confirmation au client ?')) return;
 
-    const response = await fetch(`/api/interventions/${interventionId}/send-confirmation`, {
-      method: 'POST',
-    });
+    setEmailSending(true);
 
-    if (response.ok) {
-      alert('✅ Email envoyé !');
-    } else {
-      alert('❌ Erreur lors de l\'envoi');
+    try {
+      const response = await fetch(`/api/interventions/${interventionId}/send-confirmation`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert('✅ Email envoyé avec succès !');
+        setEmailSent(true);
+        setEmailSentAt(new Date().toISOString());
+      } else {
+        // Gérer les différents cas d'erreur
+        if (data.error === 'Email de confirmation déjà envoyé') {
+          alert('ℹ️ Email de confirmation déjà envoyé.');
+          setEmailSent(true);
+          // Recharger le statut pour être sûr
+          await checkEmailStatus();
+        } else {
+          alert(`❌ Erreur lors de l'envoi: ${data.error || 'Erreur inconnue'}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur réseau:', error);
+      alert('❌ Erreur de connexion lors de l\'envoi');
+    } finally {
+      setEmailSending(false);
     }
   };
 
@@ -142,12 +208,52 @@ export function InterventionActions({
         </div>
 
         <div className="space-y-4">
-          <button
-            onClick={handleSendConfirmation}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:from-blue-700 hover:to-blue-600 transition-all flex items-center justify-center gap-2"
-          >
-            📧 Envoyer confirmation au client
-          </button>
+          {/* 📧 BOUTON EMAIL DE CONFIRMATION */}
+          {emailLoading ? (
+            <div className="w-full bg-gray-100 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2">
+              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span className="text-gray-600">Vérification...</span>
+            </div>
+          ) : emailSent ? (
+            <div className="w-full bg-green-50 border-2 border-green-200 py-4 rounded-xl font-bold text-lg flex flex-col items-center justify-center gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">✅</span>
+                <span className="text-green-800">Email de confirmation envoyé</span>
+              </div>
+              {emailSentAt && (
+                <p className="text-green-600 text-sm">
+                  Envoyé le {new Date(emailSentAt).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={handleSendConfirmation}
+              disabled={emailSending}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:from-blue-700 hover:to-blue-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {emailSending ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Envoi en cours...
+                </>
+              ) : (
+                <>📧 Envoyer confirmation au client</>
+              )}
+            </button>
+          )}
 
           <button
             onClick={() => router.push(`/dashboard/interventions/${interventionId}/invoice`)}
