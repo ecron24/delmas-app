@@ -18,12 +18,16 @@ WHERE total IS NULL;
 
 -- Créer un trigger pour calculer automatiquement le total à chaque insertion/mise à jour
 CREATE OR REPLACE FUNCTION calculate_invoice_item_total()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = piscine_delmas_compta
+AS $$
 BEGIN
     NEW.total = NEW.quantity * NEW.unit_price;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Supprimer le trigger s'il existe déjà
 DROP TRIGGER IF EXISTS trigger_calculate_invoice_item_total ON invoice_items;
