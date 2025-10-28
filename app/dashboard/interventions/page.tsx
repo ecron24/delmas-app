@@ -101,15 +101,17 @@ export default function InterventionsPage() {
 
     const interventionsData = data || [];
 
-    const todayList = interventionsData.filter(i =>
-      i.scheduled_date === todayStr &&
-      ['scheduled', 'in_progress'].includes(i.status)
-    );
+    const todayList = interventionsData.filter(i => {
+      const interventionDate = i.scheduled_date?.split('T')[0]; // Extraire juste YYYY-MM-DD
+      return interventionDate === todayStr &&
+             ['scheduled', 'in_progress'].includes(i.status);
+    });
 
-    const tomorrowList = interventionsData.filter(i =>
-      i.scheduled_date === tomorrowStr &&
-      i.status === 'scheduled'
-    );
+    const tomorrowList = interventionsData.filter(i => {
+      const interventionDate = i.scheduled_date?.split('T')[0];
+      return interventionDate === tomorrowStr &&
+             i.status === 'scheduled';
+    });
 
     const upcomingList = interventionsData.filter(i => {
       const date = new Date(i.scheduled_date);
