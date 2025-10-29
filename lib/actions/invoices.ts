@@ -3,14 +3,16 @@ import { createServerClient } from '@/lib/supabase/server';
 import { cache } from 'react';
 
 type Invoice = {
+  id: string;                                               // ← Ajouté
   intervention_id: string;
   invoice_number: string;
-  invoice_date: string;
+  issue_date: string;                                       // ← Corrigé : issue_date
   due_date: string;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
-  total_ht: number;
+  invoice_type: string;                                     // ← Ajouté
+  subtotal_ht: number;                                      // ← Corrigé : subtotal_ht
   total_ttc: number;
-  amount_paid: number;
+  amount_paid?: number;                                     // ← Optionnel
   intervention?: {
     id: string;
     reference: string;
@@ -44,20 +46,21 @@ export const getInvoices = cache(async (): Promise<{ invoices: Invoice[]; stats:
     .schema('piscine_delmas_compta')
     .from('invoices')
     .select('*')
-    .order('invoice_date', { ascending: false });
+    .neq('status', 'draft')                                 // ← Exclut les brouillons
+    .order('issue_date', { ascending: false });             // ← Corrigé : issue_date
 
-  if (error || !data || data.length === 0) {
+  if (error) {
     console.error('Erreur chargement factures:', error);
     return {
       invoices: [],
-      stats: {
-        total: 0,
-        sent: 0,
-        paid: 0,
-        overdue: 0,
-        totalAmount: 0,
-        paidAmount: 0,
-      },
+      stats: { total: 0, sent: 0, paid: 0, overdue: 0, totalAmount: 0, paidAmount: 0 }
+    };
+  }
+
+  if (!data || data.length === 0) {
+    return {
+      invoices: [],
+      stats: { total: 0, sent: 0, paid: 0, overdue: 0, totalAmount: 0, paidAmount: 0 }
     };
   }
 

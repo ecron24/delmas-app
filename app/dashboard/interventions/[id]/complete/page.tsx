@@ -67,115 +67,90 @@ export default function CompleteInterventionPage({ params }: { params: { id: str
   };
 
   const handleComplete = async (clientPresent: boolean) => {
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const supabase = createClient();
+  try {
+    const supabase = createClient();
 
-      if (clientPresent) {
-        // CAS 1 : Client présent → Aller à la signature
-        const { error: updateError } = await supabase
-          .schema('piscine_delmas_public')
-          .from('interventions')
-          .update({
-            client_present: true,
-          })
-          .eq('id', params.id);
+    if (clientPresent) {
+      // CAS 1 : Client présent → Aller à la signature
+      const { error: updateError } = await supabase
+        .schema('piscine_delmas_public')
+        .from('interventions')
+        .update({
+          client_present: true,
+        })
+        .eq('id', params.id);
 
-        if (updateError) throw updateError;
+      if (updateError) throw updateError;
 
-        router.push(`/dashboard/interventions/${params.id}/sign`);
+      router.push(`/dashboard/interventions/${params.id}/sign`);
 
-      } else {
-        // CAS 2 : Client absent → Marquer completed + envoyer email + notifier Google Calendar
-        const { error: updateError } = await supabase
-          .schema('piscine_delmas_public')
-          .from('interventions')
-          .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            client_present: false,
-            client_signed_at: null,
-          })
-          .eq('id', params.id);
+    } else {
+      // CAS 2 : Client absent → Marquer completed + Google Calendar SEULEMENT
+      const { error: updateError } = await supabase
+        .schema('piscine_delmas_public')
+        .from('interventions')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          client_present: false,
+          client_signed_at: null,
+        })
+        .eq('id', params.id);
 
-        if (updateError) throw updateError;
+      if (updateError) throw updateError;
 
-        // Suivre les succès/échecs
-        let calendarSuccess = false;
-        let emailSuccess = false;
-        const errors: string[] = [];
+      // 📅 SEULEMENT Google Calendar (pas d'email)
+      let calendarSuccess = false;
+      const errors: string[] = [];
 
-        // 🆕 Notifier Google Calendar
-        try {
-          const calendarResponse = await fetch(`/api/interventions/${params.id}/notify-completion`, {
-            method: 'POST',
-          });
+      try {
+        const calendarResponse = await fetch(`/api/interventions/${params.id}/notify-completion`, {
+          method: 'POST',
+        });
 
-          if (calendarResponse.ok) {
-            const data = await calendarResponse.json();
-            calendarSuccess = data.success || false;
-            console.log('✅ Google Calendar:', data);
-          } else {
-            const errorData = await calendarResponse.json();
-            errors.push(`Calendar: ${errorData.error || 'Erreur inconnue'}`);
-            console.error('❌ Erreur Calendar:', errorData);
-          }
-        } catch (err: any) {
-          errors.push(`Calendar: ${err.message}`);
-          console.error('⚠️ Erreur mise à jour Google Calendar:', err);
-        }
-
-        // Envoyer l'email de confirmation
-        try {
-          const emailResponse = await fetch(`/api/interventions/${params.id}/send-confirmation`, {
-            method: 'POST',
-          });
-
-          if (emailResponse.ok) {
-            const data = await emailResponse.json();
-            emailSuccess = data.success || false;
-            console.log('✅ Email:', data);
-          } else {
-            const errorData = await emailResponse.json();
-            errors.push(`Email: ${errorData.error || 'Erreur inconnue'}`);
-            console.error('❌ Erreur Email:', errorData);
-          }
-        } catch (err: any) {
-          errors.push(`Email: ${err.message}`);
-          console.error('⚠️ Erreur envoi email:', err);
-        }
-
-        // Message de feedback détaillé
-        let message = '✅ Intervention marquée comme terminée.\n\n';
-
-        if (calendarSuccess) {
-          message += '✅ Google Calendar mis à jour\n';
+        if (calendarResponse.ok) {
+          const data = await calendarResponse.json();
+          calendarSuccess = data.success || false;
+          console.log('✅ Google Calendar:', data);
         } else {
-          message += '⚠️ Google Calendar non mis à jour\n';
+          const errorData = await calendarResponse.json();
+          errors.push(`Calendar: ${errorData.error || 'Erreur inconnue'}`);
+          console.error('❌ Erreur Calendar:', errorData);
         }
-
-        if (emailSuccess) {
-          message += '✅ Email envoyé au client\n';
-        } else {
-          message += '⚠️ Email non envoyé\n';
-        }
-
-        if (errors.length > 0) {
-          message += '\n⚠️ Erreurs:\n' + errors.join('\n');
-        }
-
-        alert(message);
-        router.push(`/dashboard/interventions/${params.id}`);
+      } catch (err: any) {
+        errors.push(`Calendar: ${err.message}`);
+        console.error('⚠️ Erreur mise à jour Google Calendar:', err);
       }
 
-    } catch (error: any) {
-      console.error('Erreur:', error);
-      alert(`❌ Erreur : ${error?.message || 'Erreur inconnue'}`);
-    } finally {
-      setLoading(false);
+      // 📧 PAS D'EMAIL AUTOMATIQUE - Message modifié
+      let message = '✅ Intervention marquée comme terminée.\n\n';
+
+      if (calendarSuccess) {
+        message += '✅ Google Calendar mis à jour\n';
+      } else {
+        message += '⚠️ Google Calendar non mis à jour\n';
+      }
+
+      message += '\n📧 Pour envoyer la confirmation au client :\n';
+      message += '→ Cliquez sur "Envoyer confirmation" sur la page intervention';
+
+      if (errors.length > 0) {
+        message += '\n\n⚠️ Erreurs:\n' + errors.join('\n');
+      }
+
+      alert(message);
+      router.push(`/dashboard/interventions/${params.id}`);
     }
-  };
+
+  } catch (error: any) {
+    console.error('Erreur:', error);
+    alert(`❌ Erreur : ${error?.message || 'Erreur inconnue'}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">

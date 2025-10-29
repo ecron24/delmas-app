@@ -4,14 +4,16 @@ import { useRouter } from 'next/navigation';
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 type Invoice = {
+  id: string;
   intervention_id: string;
   invoice_number: string;
-  invoice_date: string;
+  issue_date: string;
   due_date: string;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
-  total_ht: number;
+  invoice_type: string;
+  subtotal_ht: number;
   total_ttc: number;
-  amount_paid: number;
+  amount_paid?: number;
   intervention?: {
     id: string;
     reference: string;
@@ -67,15 +69,20 @@ export function InvoiceList({ invoices }: InvoiceListProps) {
       <div className="divide-y-2 divide-gray-200">
         {invoices.map((invoice) => {
           const client = invoice.intervention?.client;
-          const clientName = client?.type === 'professionnel' && client?.company_name
-            ? client.company_name
-            : client
-              ? `${client.first_name} ${client.last_name}`
-              : 'Client non défini';
+
+          // ✅ Logique simplifiée pour éviter les erreurs de parsing
+          let clientName = 'Client non défini';
+          if (client) {
+            if (client.type === 'professionnel' && client.company_name) {
+              clientName = client.company_name;
+            } else {
+              clientName = `${client.first_name} ${client.last_name}`;
+            }
+          }
 
           return (
             <div
-              key={invoice.intervention_id}
+              key={invoice.id}
               onClick={() => router.push(`/dashboard/interventions/${invoice.intervention_id}`)}
               className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
             >
@@ -89,13 +96,13 @@ export function InvoiceList({ invoices }: InvoiceListProps) {
                   </div>
                   <div className="text-xs text-gray-500 space-y-1">
                     <div>📋 {invoice.invoice_number}</div>
-                    <div>📅 Émise : {new Date(invoice.invoice_date).toLocaleDateString('fr-FR')}</div>
+                    <div>📅 Émise : {new Date(invoice.issue_date).toLocaleDateString('fr-FR')}</div>
                     <div>📆 Échéance : {new Date(invoice.due_date).toLocaleDateString('fr-FR')}</div>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-primary">{invoice.total_ttc.toFixed(2)}€</p>
-                  {invoice.amount_paid > 0 && (
+                  {invoice.amount_paid && invoice.amount_paid > 0 && (
                     <p className="text-xs text-green-600 mt-1">
                       Payé : {invoice.amount_paid.toFixed(2)}€
                     </p>

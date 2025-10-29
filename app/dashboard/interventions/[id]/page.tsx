@@ -112,7 +112,7 @@ export default async function InterventionDetailPage({ params }: { params: { id:
                 <div className="flex-1">
                   <p className="text-sm text-gray-500 mb-2">Type(s) d'intervention</p>
                   <div className="flex flex-wrap gap-2">
-                    {intervention.intervention_types?.map((t, i) => (
+                    {intervention.intervention_types_junction?.map((t, i) => (
                       <span key={i} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
                         {TYPE_LABELS[t.intervention_type] || t.intervention_type}
                       </span>

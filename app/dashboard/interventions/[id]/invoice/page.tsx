@@ -26,6 +26,7 @@ type Invoice = {
   status: string;
   proforma_validated_at: string | null;
   proforma_validated_by: string | null;
+  created_at: string;
   client: {
     first_name: string;
     last_name: string;
@@ -40,6 +41,9 @@ type Invoice = {
     reference: string;
     scheduled_date: string;
     description: string;
+    duration: number;
+    hourly_rate: number;
+    travel_fees: number;
     intervention_types_junction: Array<{ intervention_type: string }>;
   };
   invoice_items: InvoiceItem[];
@@ -51,7 +55,6 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // États éditables
   const [issueDate, setIssueDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [items, setItems] = useState<InvoiceItem[]>([]);
@@ -64,61 +67,106 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
   const loadInvoice = async () => {
     const supabase = createClient();
 
-    // Récupérer la facture proforma de cette intervention
-    const { data, error } = await supabase
+    // 1️⃣ RECHERCHE FACTURE
+    let { data: allInvoices } = await supabase
       .schema('piscine_delmas_compta')
       .from('invoices')
-      .select(`
-        *,
-        client:client_id(
-          first_name,
-          last_name,
-          company_name,
-          email,
-          address,
-          postal_code,
-          city,
-          type
-        ),
-        intervention:intervention_id(
-          reference,
-          scheduled_date,
-          description,
-          intervention_types_junction(intervention_type)
-        ),
-        invoice_items(*)
-      `)
-      .eq('intervention_id', params.id)
-      .eq('invoice_type', 'proforma')
-      .single();
+      .select('*')
+      .eq('intervention_id', params.id);
 
-    if (error) {
-      console.error('Erreur:', error);
+    // Si pas trouvée par intervention_id, chercher par ID direct
+    if (!allInvoices || allInvoices.length === 0) {
+      const { data: directInvoice } = await supabase
+        .schema('piscine_delmas_compta')
+        .from('invoices')
+        .select('*')
+        .eq('id', params.id)
+        .single();
+
+      if (directInvoice) allInvoices = [directInvoice];
+    }
+
+    if (!allInvoices || allInvoices.length === 0) {
       setLoading(false);
       return;
     }
 
-    setInvoice(data as any);
-    setIssueDate(data.issue_date);
-    setDueDate(data.due_date);
-    setItems(data.invoice_items || []);
-    setNotes(data.notes || '');
+    const latestInvoice = allInvoices[0];
+
+    // 2️⃣ RÉCUPÉRATION INTERVENTION
+    const { data: intervention } = await supabase
+      .schema('piscine_delmas_public')
+      .from('interventions')
+      .select('*')
+      .eq('id', latestInvoice.intervention_id)
+      .single();
+
+    // 3️⃣ RÉCUPÉRATION CLIENT
+    const { data: clientData } = await supabase
+      .schema('piscine_delmas_public')
+      .from('clients')
+      .select('*')
+      .eq('id', latestInvoice.client_id)
+      .single();
+
+    // 4️⃣ RÉCUPÉRATION ITEMS
+    const { data: itemsData } = await supabase
+      .schema('piscine_delmas_compta')
+      .from('invoice_items')
+      .select('*')
+      .eq('invoice_id', latestInvoice.id);
+
+    // 5️⃣ ASSEMBLAGE FINAL
+    const fullInvoice = {
+      ...latestInvoice,
+      client: clientData,
+      intervention: {
+        reference: intervention?.reference || 'N/A',
+        scheduled_date: intervention?.scheduled_date || '',
+        description: intervention?.description || '',
+        duration: intervention?.duration || 0,
+        hourly_rate: intervention?.hourly_rate || 0,
+        travel_fees: intervention?.travel_fees || 0,
+        intervention_types_junction: []
+      },
+      invoice_items: itemsData || []
+    };
+
+    setInvoice(fullInvoice as any);
+    setIssueDate(latestInvoice.issue_date);
+    setDueDate(latestInvoice.due_date);
+    setItems(itemsData || []);
+    setNotes(latestInvoice.notes || '');
     setLoading(false);
   };
 
   const calculateTotals = () => {
-    const subtotal_ht = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-    const total_tva = items.reduce((sum, item) => {
+    if (!invoice) return { subtotal_ht: 0, total_tva: 0, total_ttc: 0 };
+
+    const laborHT = (invoice.intervention.duration || 0) * (invoice.intervention.hourly_rate || 0);
+    const laborTVA = laborHT * 0.20;
+
+    const travelHT = invoice.intervention.travel_fees || 0;
+    const travelTVA = travelHT * 0.20;
+
+    const productsHT = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const productsTVA = items.reduce((sum, item) => {
       const item_ht = item.quantity * item.unit_price;
       const item_tva = item_ht * (item.tva_rate / 100);
       return sum + item_tva;
     }, 0);
+
+    const subtotal_ht = laborHT + travelHT + productsHT;
+    const total_tva = laborTVA + travelTVA + productsTVA;
     const total_ttc = subtotal_ht + total_tva;
 
     return {
       subtotal_ht,
       total_tva,
       total_ttc,
+      labor: { ht: laborHT, tva: laborTVA },
+      travel: { ht: travelHT, tva: travelTVA },
+      products: { ht: productsHT, tva: productsTVA }
     };
   };
 
@@ -153,7 +201,6 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
     const supabase = createClient();
 
     try {
-      // 1. Mettre à jour la facture
       const { error: invoiceError } = await supabase
         .schema('piscine_delmas_compta')
         .from('invoices')
@@ -170,14 +217,12 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
 
       if (invoiceError) throw invoiceError;
 
-      // 2. Supprimer anciennes lignes
       await supabase
         .schema('piscine_delmas_compta')
         .from('invoice_items')
         .delete()
         .eq('invoice_id', invoice.id);
 
-      // 3. Insérer nouvelles lignes
       if (items.length > 0) {
         const itemsToInsert = items.map(item => ({
           invoice_id: invoice.id,
@@ -208,28 +253,73 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
 
   const handleValidate = async () => {
     if (!invoice) return;
-    if (!confirm('🔒 Valider cette facture proforma ? Elle ne pourra plus être modifiée.')) return;
 
-    const supabase = createClient();
+    if (!confirm('🔒 Valider cette facture ?\n\n✅ Elle deviendra une FACTURE FINALE\n📋 Elle apparaîtra dans "Factures en attente"\n🚫 Elle ne pourra plus être modifiée')) {
+      return;
+    }
 
-    // Récupérer l'utilisateur actuel
-    const { data: { user } } = await supabase.auth.getUser();
+    setSaving(true);
 
-    const { error } = await supabase
-      .schema('piscine_delmas_compta')
-      .from('invoices')
-      .update({
-        status: 'validated',
-        proforma_validated_at: new Date().toISOString(),
-        proforma_validated_by: user?.id,
-      })
-      .eq('id', invoice.id);
+    try {
+      await handleSave();
 
-    if (!error) {
-      alert('✅ Facture validée !');
-      router.push(`/dashboard/interventions/${params.id}`);
-    } else {
-      alert('❌ Erreur lors de la validation');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await supabase
+        .schema('piscine_delmas_compta')
+        .from('invoices')
+        .update({
+          status: 'sent',
+          invoice_type: 'final',
+          proforma_validated_at: new Date().toISOString(),
+          proforma_validated_by: user?.id,
+        })
+        .eq('id', invoice.id);
+
+      if (!error) {
+        alert('✅ Facture finale créée !\n\n📋 Redirection vers "Factures en attente"');
+        router.push('/dashboard/invoices?filter=sent');
+      } else {
+        throw new Error('Erreur lors de la validation');
+      }
+
+    } catch (error: any) {
+      console.error('Erreur validation:', error);
+      alert(`❌ Erreur : ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSendToClient = async () => {
+    if (!invoice) return;
+
+    if (!confirm('📧 Envoyer la facture finale au client ?\n\n✅ Email avec PDF en pièce jointe\n📋 Statut passera à "Envoyée"')) {
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}/send-to-client`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert('✅ Facture envoyée au client avec succès !');
+        setInvoice(prev => prev ? { ...prev, status: 'sent' } : null);
+      } else {
+        alert(`❌ Erreur lors de l'envoi: ${data.error || 'Erreur inconnue'}`);
+      }
+
+    } catch (error: any) {
+      console.error('Erreur envoi facture:', error);
+      alert(`❌ Erreur de connexion: ${error.message}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -245,7 +335,7 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center">
-          <p className="text-red-900 font-bold">❌ Aucune facture proforma trouvée</p>
+          <p className="text-red-900 font-bold">❌ Aucune facture trouvée</p>
           <p className="text-sm text-gray-600 mt-2">
             La facture sera créée automatiquement quand l'intervention sera terminée.
           </p>
@@ -260,7 +350,12 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
     );
   }
 
-  const isEditable = invoice.status === 'draft';
+  const isEditable = invoice && (
+    (invoice.invoice_type === 'proforma' && invoice.status === 'draft') ||
+    (!invoice.invoice_type && invoice.status === 'draft') ||
+    (invoice.status === 'draft')
+  );
+
   const clientName = invoice.client.type === 'professionnel' && invoice.client.company_name
     ? invoice.client.company_name
     : `${invoice.client.first_name} ${invoice.client.last_name}`;
@@ -280,7 +375,6 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-5xl mx-auto">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => router.back()}
@@ -309,9 +403,20 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
                   className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center gap-2"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  Valider
+                  {invoice?.invoice_type === 'final' ? 'Finaliser' : 'Valider'}
                 </button>
               </>
+            )}
+
+            {invoice && invoice.invoice_type === 'final' && invoice.status !== 'draft' && (
+              <button
+                onClick={handleSendToClient}
+                disabled={saving}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+                {saving ? 'Envoi...' : 'Envoyer au client'}
+              </button>
             )}
 
             <button
@@ -324,28 +429,59 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
           </div>
         </div>
 
-        {/* Badge statut */}
-        {invoice.status === 'validated' && (
-          <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 mb-6">
+        {invoice && (
+          <div className={`border-2 rounded-xl p-4 mb-6 ${
+            invoice.invoice_type === 'final'
+              ? 'bg-blue-50 border-blue-200'
+              : invoice.status === 'sent'
+                ? 'bg-green-50 border-green-200'
+                : 'bg-yellow-50 border-yellow-200'
+          }`}>
             <div className="flex items-center justify-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <p className="text-green-800 font-semibold">
-                Facture validée le {new Date(invoice.proforma_validated_at!).toLocaleDateString('fr-FR')} - Lecture seule
-              </p>
+              {invoice.invoice_type === 'final' ? (
+                <>
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  <p className="text-blue-800 font-semibold">
+                    📋 Facture finale
+                    {invoice.proforma_validated_at && ` créée le ${new Date(invoice.proforma_validated_at).toLocaleDateString('fr-FR')}`}
+                    {invoice.status === 'sent' ? ' - Envoyée au client' : ' - Prête à envoyer'}
+                  </p>
+                </>
+              ) : invoice.status === 'sent' ? (
+                <>
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <p className="text-green-800 font-semibold">
+                    ✅ Facture validée
+                    {invoice.proforma_validated_at && ` le ${new Date(invoice.proforma_validated_at).toLocaleDateString('fr-FR')}`}
+                    - Lecture seule
+                  </p>
+                </>
+              ) : (
+                <>
+                  <FileText className="w-5 h-5 text-yellow-600" />
+                  <p className="text-yellow-800 font-semibold">
+                    📝 Facture en cours d'édition - Brouillon
+                  </p>
+                </>
+              )}
             </div>
           </div>
         )}
 
-        {/* Facture */}
         <div className="bg-white rounded-xl shadow-lg p-8 print:shadow-none">
-          {/* En-tête facture */}
           <div className="flex justify-between mb-8 pb-6 border-b-2">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">FACTURE PROFORMA</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {invoice.invoice_type === 'final'
+                  ? 'FACTURE FINALE'
+                  : invoice.invoice_type === 'proforma'
+                    ? 'FACTURE PROFORMA'
+                    : 'FACTURE'
+                }
+              </h1>
               <p className="text-sm text-gray-600 font-mono">{invoice.invoice_number}</p>
               <p className="text-sm text-gray-600">Intervention : {invoice.intervention.reference}</p>
 
-              {/* Types d'intervention */}
               <div className="flex flex-wrap gap-1 mt-2">
                 {invoice.intervention.intervention_types_junction?.map((t: any, i: number) => (
                   <span key={i} className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
@@ -357,15 +493,15 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
 
             <div className="text-right">
               <p className="font-bold text-lg text-gray-900 mb-1">PISCINE DELMAS</p>
-              <p className="text-sm text-gray-600">123 Avenue de la Piscine</p>
-              <p className="text-sm text-gray-600">31000 Toulouse</p>
-              <p className="text-sm text-gray-600">SIRET: 123 456 789 00012</p>
+              <p className="text-sm text-gray-600">Le bois Simon (les linguettes) </p>
+              <p className="text-sm text-gray-600">24370 Pechs de l'esperance</p>
+              <p className="text-sm text-gray-600">SIRET: 483 093 118</p>
+              <p className="text-sm text-gray-600">TVA: FR38483093118</p>
               <p className="text-sm text-gray-600 mt-2">📧 contact@piscine-delmas.fr</p>
-              <p className="text-sm text-gray-600">📞 05 61 XX XX XX</p>
+              <p className="text-sm text-gray-600">📞 06 87 84 24 99</p>
             </div>
           </div>
 
-          {/* Client + Dates */}
           <div className="grid grid-cols-2 gap-8 mb-8">
             <div>
               <h3 className="font-bold text-gray-900 mb-3">FACTURÉ À</h3>
@@ -416,7 +552,6 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
             </div>
           </div>
 
-          {/* Description intervention */}
           {invoice.intervention.description && (
             <div className="mb-6 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm font-semibold text-gray-700 mb-2">📝 Travaux réalisés</p>
@@ -426,7 +561,6 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
             </div>
           )}
 
-          {/* Tableau des lignes */}
           <div className="mb-8">
             <table className="w-full">
               <thead>
@@ -440,6 +574,36 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
                 </tr>
               </thead>
               <tbody>
+                {invoice.intervention.duration > 0 && (
+                  <tr className="border-b border-gray-200 bg-blue-50">
+                    <td className="py-3 px-4 font-semibold text-blue-900">
+                      🛠️ Main d'œuvre
+                    </td>
+                    <td className="py-3 px-4 text-center">{invoice.intervention.duration}h</td>
+                    <td className="py-3 px-4 text-right">{invoice.intervention.hourly_rate}€</td>
+                    <td className="py-3 px-4 text-center">20%</td>
+                    <td className="py-3 px-4 text-right font-semibold text-blue-900">
+                      {totals.labor?.ht.toFixed(2)}€
+                    </td>
+                    {isEditable && <td></td>}
+                  </tr>
+                )}
+
+                {invoice.intervention.travel_fees > 0 && (
+                  <tr className="border-b border-gray-200 bg-orange-50">
+                    <td className="py-3 px-4 font-semibold text-orange-900">
+                      🚗 Frais de déplacement
+                    </td>
+                    <td className="py-3 px-4 text-center">1</td>
+                    <td className="py-3 px-4 text-right">{invoice.intervention.travel_fees}€</td>
+                    <td className="py-3 px-4 text-center">20%</td>
+                    <td className="py-3 px-4 text-right font-semibold text-orange-900">
+                      {totals.travel?.ht.toFixed(2)}€
+                    </td>
+                    {isEditable && <td></td>}
+                  </tr>
+                )}
+
                 {items.map((item, index) => (
                   <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
                     <td className="py-3 px-4">
@@ -521,12 +685,11 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
                 className="mt-4 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 font-semibold flex items-center gap-2 transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                Ajouter une ligne
+                Ajouter un produit
               </button>
             )}
           </div>
 
-          {/* Totaux */}
           <div className="flex justify-end mb-8">
             <div className="w-96">
               <div className="flex justify-between py-2 border-b border-gray-200">
@@ -548,7 +711,6 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
             </div>
           </div>
 
-          {/* Notes */}
           <div className="pt-6 border-t-2">
             <h3 className="font-bold text-gray-900 mb-2">Notes et conditions</h3>
             {isEditable ? (
@@ -560,19 +722,17 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
                 placeholder="Conditions de paiement, remarques..."
               />
             ) : (
-              <p className="text-sm text-gray-600 whitespace-pre-wrap">{notes || 'Aucune note'}</p>
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">{notes || 'CGV A REMPLIR'}</p>
             )}
           </div>
 
-          {/* Footer */}
           <div className="mt-8 pt-6 border-t text-center text-xs text-gray-500">
-            <p>Piscine Delmas - SIRET 123 456 789 00012 - TVA FR12345678900</p>
+            <p>Piscine Delmas - SIRET 483 093 118 - TVA FR38483093118</p>
             <p className="mt-1">Document généré le {new Date().toLocaleDateString('fr-FR')}</p>
           </div>
         </div>
       </div>
 
-      {/* Print styles */}
       <style jsx global>{`
         @media print {
           body * {

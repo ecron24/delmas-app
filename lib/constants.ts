@@ -12,7 +12,6 @@ export const INTERVENTION_TYPES = {
   cleaning: 'Nettoyage',
   winterization: 'Hivernage',
   recommissioning: 'Remise en service',
-  quote: 'Devis',
   other: 'Autre'
 } as const;
 
@@ -30,7 +29,6 @@ export const INTERVENTION_TYPE_CONFIG = {
   cleaning: { emoji: '🧹', label: 'Nettoyage', color: 'cyan' },
   winterization: { emoji: '❄️', label: 'Hivernage', color: 'indigo' },
   recommissioning: { emoji: '🌊', label: 'Remise en service', color: 'teal' },
-  quote: { emoji: '💰', label: 'Devis', color: 'yellow' },
   other: { emoji: '📋', label: 'Autre', color: 'gray' },
 } as const;
 
