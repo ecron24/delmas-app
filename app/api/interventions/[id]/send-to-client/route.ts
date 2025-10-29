@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 import { getCompanySettings } from '@/lib/actions/company-settings';
+import { generateInvoiceHTML } from '@/lib/pdf/generate-invoice-html';
+import { generateInvoicePDF } from '@/lib/pdf/generate-invoice-pdf';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -51,16 +53,23 @@ export async function POST(
     const { data: client, error: clientError } = await supabase
       .schema('piscine_delmas_public')
       .from('clients')
-      .select('first_name, last_name, company_name, email, type')
+      .select('first_name, last_name, company_name, email, address, postal_code, city, type')
       .eq('id', invoice.client_id)
       .single();
 
     const { data: intervention, error: interventionError } = await supabase
       .schema('piscine_delmas_public')
       .from('interventions')
-      .select('reference, scheduled_date, description')
+      .select('reference, scheduled_date, description, duration, hourly_rate, travel_fees')
       .eq('id', invoice.intervention_id)
       .single();
+
+    // Récupérer les items de la facture
+    const { data: invoiceItems, error: itemsError } = await supabase
+      .schema('piscine_delmas_compta')
+      .from('invoice_items')
+      .select('*')
+      .eq('invoice_id', invoice.id);
 
     if (clientError || !client || interventionError || !intervention) {
       console.error('❌ Données manquantes:', { clientError, interventionError });
@@ -154,9 +163,50 @@ export async function POST(
       </div>
     `;
 
-    // 6️⃣ GÉNÉRER LE PDF (pour l'instant, on simule - vous devrez implémenter la génération PDF)
-    // TODO: Intégrer une librairie comme puppeteer ou jsPDF pour générer le PDF
-    const pdfBuffer = Buffer.from('PDF_PLACEHOLDER'); // Remplacer par la vraie génération PDF
+    // 6️⃣ GÉNÉRER LE PDF avec Gotenberg
+    console.log('📄 Génération du PDF pour la facture:', invoice.invoice_number);
+
+    const invoiceHTML = generateInvoiceHTML({
+      invoice: {
+        id: invoice.id,
+        invoice_number: invoice.invoice_number,
+        invoice_type: invoice.invoice_type,
+        issue_date: invoice.issue_date,
+        due_date: invoice.due_date,
+        subtotal_ht: invoice.subtotal_ht,
+        total_tva: invoice.total_tva,
+        total_ttc: invoice.total_ttc,
+        notes: invoice.notes,
+      },
+      client: {
+        first_name: client.first_name,
+        last_name: client.last_name,
+        company_name: client.company_name,
+        email: client.email,
+        address: client.address,
+        postal_code: client.postal_code,
+        city: client.city,
+        type: client.type,
+      },
+      intervention: {
+        reference: intervention.reference,
+        scheduled_date: intervention.scheduled_date,
+        description: intervention.description,
+        duration: intervention.duration,
+        hourly_rate: intervention.hourly_rate,
+        travel_fees: intervention.travel_fees,
+      },
+      items: (invoiceItems || []).map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        tva_rate: item.tva_rate,
+        total: item.total,
+      })),
+      companySettings,
+    });
+
+    const pdfBuffer = await generateInvoicePDF(invoiceHTML, invoice.invoice_number);
 
     // 7️⃣ ENVOYER L'EMAIL
     const fromEmail = companySettings.email.includes('@')
