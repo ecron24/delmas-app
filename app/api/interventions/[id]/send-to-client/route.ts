@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
+import { getCompanySettings } from '@/lib/actions/company-settings';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -15,6 +16,12 @@ export async function POST(
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
+    }
+
+    // 🏢 Charger les paramètres de l'entreprise
+    const { data: companySettings } = await getCompanySettings();
+    if (!companySettings) {
+      return NextResponse.json({ success: false, error: 'Configuration entreprise manquante' }, { status: 500 });
     }
 
     console.log('📧 Envoi facture:', params.id);
@@ -85,8 +92,8 @@ export async function POST(
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="margin: 0; font-size: 28px;">🏊‍♀️ PISCINE DELMAS</h1>
+        <div style="background: linear-gradient(135deg, ${companySettings.primary_color}, ${companySettings.primary_color}dd); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="margin: 0; font-size: 28px;">${companySettings.company_name}</h1>
           <p style="margin: 10px 0 0 0; opacity: 0.9;">Votre facture finale est prête</p>
         </div>
 
@@ -126,13 +133,21 @@ export async function POST(
 
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
             <p style="color: #9ca3af; font-size: 14px; margin: 5px 0;">
-              📧 <a href="mailto:contact@piscine-delmas.fr" style="color: #3b82f6;">contact@piscine-delmas.fr</a>
+              📧 <a href="mailto:${companySettings.email}" style="color: ${companySettings.primary_color};">${companySettings.email}</a>
             </p>
             <p style="color: #9ca3af; font-size: 14px; margin: 5px 0;">
-              📞 05 61 XX XX XX
+              📞 ${companySettings.phone}
             </p>
+            ${companySettings.website ? `
+            <p style="color: #9ca3af; font-size: 14px; margin: 5px 0;">
+              🌐 <a href="${companySettings.website}" style="color: ${companySettings.primary_color};">${companySettings.website}</a>
+            </p>
+            ` : ''}
             <p style="color: #9ca3af; font-size: 12px; margin-top: 15px;">
-              Piscine Delmas - 123 Avenue de la Piscine, 31000 Toulouse
+              ${companySettings.company_name} - ${companySettings.company_address}, ${companySettings.company_postal_code} ${companySettings.company_city}
+            </p>
+            <p style="color: #9ca3af; font-size: 11px; margin-top: 5px;">
+              SIRET: ${companySettings.siret} - TVA: ${companySettings.tva_number}
             </p>
           </div>
         </div>
@@ -144,8 +159,12 @@ export async function POST(
     const pdfBuffer = Buffer.from('PDF_PLACEHOLDER'); // Remplacer par la vraie génération PDF
 
     // 7️⃣ ENVOYER L'EMAIL
+    const fromEmail = companySettings.email.includes('@')
+      ? `${companySettings.company_name} <${companySettings.email}>`
+      : `${companySettings.company_name} <factures@${companySettings.email.split('@')[1] || 'example.com'}>`;
+
     const emailResponse = await resend.emails.send({
-      from: 'Piscine Delmas <factures@piscine-delmas.fr>',
+      from: fromEmail,
       to: [client.email],
       subject: emailSubject,
       html: emailHtml,
