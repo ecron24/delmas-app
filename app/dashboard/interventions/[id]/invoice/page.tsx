@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { FileText, Save, Send, Download, Plus, Trash2, CheckCircle } from 'lucide-react';
+import { getCompanySettings, CompanySettings } from '@/lib/actions/company-settings';
 
 type InvoiceItem = {
   id?: string;
@@ -54,6 +55,7 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
 
   const [issueDate, setIssueDate] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -62,7 +64,15 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
 
   useEffect(() => {
     loadInvoice();
+    loadCompanySettings();
   }, [params.id]);
+
+  const loadCompanySettings = async () => {
+    const { data } = await getCompanySettings();
+    if (data) {
+      setCompanySettings(data);
+    }
+  };
 
   const loadInvoice = async () => {
     const supabase = createClient();
@@ -492,13 +502,28 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
             </div>
 
             <div className="text-right">
-              <p className="font-bold text-lg text-gray-900 mb-1">PISCINE DELMAS</p>
-              <p className="text-sm text-gray-600">Le bois Simon (les linguettes) </p>
-              <p className="text-sm text-gray-600">24370 Pechs de l'esperance</p>
-              <p className="text-sm text-gray-600">SIRET: 483 093 118</p>
-              <p className="text-sm text-gray-600">TVA: FR38483093118</p>
-              <p className="text-sm text-gray-600 mt-2">📧 contact@piscine-delmas.fr</p>
-              <p className="text-sm text-gray-600">📞 06 87 84 24 99</p>
+              <p className="font-bold text-lg text-gray-900 mb-1">
+                {companySettings?.company_name || 'PISCINE DELMAS'}
+              </p>
+              <p className="text-sm text-gray-600">{companySettings?.company_address || 'Le bois Simon (les linguettes)'}</p>
+              <p className="text-sm text-gray-600">
+                {companySettings?.company_postal_code || '24370'} {companySettings?.company_city || 'Pechs de l\'esperance'}
+              </p>
+              <p className="text-sm text-gray-600">SIRET: {companySettings?.siret || '483 093 118'}</p>
+              <p className="text-sm text-gray-600">TVA: {companySettings?.tva_number || 'FR38483093118'}</p>
+              {companySettings?.legal_form && companySettings?.rcs_number && (
+                <p className="text-sm text-gray-600">
+                  {companySettings.legal_form} - RCS {companySettings.rcs_city || ''} {companySettings.rcs_number}
+                </p>
+              )}
+              {companySettings?.share_capital && (
+                <p className="text-sm text-gray-600">Capital: {companySettings.share_capital}</p>
+              )}
+              <p className="text-sm text-gray-600 mt-2">📧 {companySettings?.email || 'contact@piscine-delmas.fr'}</p>
+              <p className="text-sm text-gray-600">📞 {companySettings?.phone || '06 87 84 24 99'}</p>
+              {companySettings?.website && (
+                <p className="text-sm text-gray-600">🌐 {companySettings.website}</p>
+              )}
             </div>
           </div>
 
@@ -722,12 +747,30 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
                 placeholder="Conditions de paiement, remarques..."
               />
             ) : (
-              <p className="text-sm text-gray-600 whitespace-pre-wrap">{notes || 'CGV A REMPLIR'}</p>
+              <div className="text-sm text-gray-600 space-y-3">
+                {notes && <p className="whitespace-pre-wrap">{notes}</p>}
+
+                {companySettings?.invoice_footer_notes && (
+                  <p className="whitespace-pre-wrap">{companySettings.invoice_footer_notes}</p>
+                )}
+
+                {companySettings?.legal_mentions && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+                    <p className="text-xs whitespace-pre-wrap">{companySettings.legal_mentions}</p>
+                  </div>
+                )}
+
+                {!notes && !companySettings?.invoice_footer_notes && (
+                  <p className="text-gray-400 italic">Configurez vos CGV dans Paramètres → Configuration entreprise</p>
+                )}
+              </div>
             )}
           </div>
 
           <div className="mt-8 pt-6 border-t text-center text-xs text-gray-500">
-            <p>Piscine Delmas - SIRET 483 093 118 - TVA FR38483093118</p>
+            <p>
+              {companySettings?.company_name || 'Piscine Delmas'} - SIRET {companySettings?.siret || '483 093 118'} - TVA {companySettings?.tva_number || 'FR38483093118'}
+            </p>
             <p className="mt-1">Document généré le {new Date().toLocaleDateString('fr-FR')}</p>
           </div>
         </div>

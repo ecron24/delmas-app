@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { User, Shield, Bell, Globe, LogOut } from 'lucide-react';
+import { User, Shield, Bell, Globe, LogOut, Building2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
@@ -87,6 +87,20 @@ export default function SettingsPage() {
 
       {/* ACTIONS */}
       <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 overflow-hidden">
+        <button
+          onClick={() => router.push('/dashboard/settings/company')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b-2 border-gray-200"
+        >
+          <div className="flex items-center gap-3">
+            <Building2 className="w-5 h-5 text-blue-600" />
+            <div className="text-left">
+              <span className="font-semibold text-gray-900 block">Configuration entreprise</span>
+              <span className="text-xs text-gray-500">Mentions légales, CGV, informations</span>
+            </div>
+          </div>
+          <span className="text-gray-400">→</span>
+        </button>
+
         <button
           onClick={() => router.push('/dashboard/admin/import')}
           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b-2 border-gray-200"
