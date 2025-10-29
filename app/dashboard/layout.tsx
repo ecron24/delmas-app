@@ -10,7 +10,6 @@ import {
   Settings,
   LogOut,
   FileText,
-  Upload,
   Menu,
   X,
   Target, // 🎯 Icône prospects
@@ -66,7 +65,6 @@ export default function DashboardLayout({
   // Menu "Plus" - Fonctions secondaires
   const moreNavigation = [
     { name: 'Factures', href: '/dashboard/invoices', icon: FileText },
-    { name: 'Import données', href: '/dashboard/admin/import', icon: Upload },
     { name: 'Paramètres', href: '/dashboard/settings', icon: Settings },
   ];
 
@@ -77,7 +75,6 @@ export default function DashboardLayout({
     { name: 'Clients', href: '/dashboard/clients', icon: Users },
     { name: 'Prospects', href: '/dashboard/prospects', icon: Target }, // 🎯 NOUVEAU
     { name: 'Factures', href: '/dashboard/invoices', icon: FileText },
-    { name: 'Import données', href: '/dashboard/admin/import', icon: Upload },
     { name: 'Paramètres', href: '/dashboard/settings', icon: Settings },
   ];
 
