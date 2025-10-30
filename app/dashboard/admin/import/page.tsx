@@ -204,46 +204,46 @@ export default function AdminImportPage() {
         <label className="block text-sm font-bold text-gray-900 mb-3">
           1. Type de données
         </label>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button
             onClick={() => setImportType('products')}
-            className={`py-4 rounded-xl font-semibold transition-all ${
+            className={`py-4 px-2 rounded-xl font-semibold transition-all text-sm md:text-base ${
               importType === 'products'
                 ? 'bg-blue-600 text-white shadow-lg scale-105'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            🛒 Produits
+            🛒<span className="block md:inline md:ml-1">Produits</span>
           </button>
           <button
             onClick={() => setImportType('templates')}
-            className={`py-4 rounded-xl font-semibold transition-all ${
+            className={`py-4 px-2 rounded-xl font-semibold transition-all text-sm md:text-base ${
               importType === 'templates'
                 ? 'bg-blue-600 text-white shadow-lg scale-105'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            📋 Templates
+            📋<span className="block md:inline md:ml-1">Templates</span>
           </button>
           <button
             onClick={() => setImportType('pools')}
-            className={`py-4 rounded-xl font-semibold transition-all ${
+            className={`py-4 px-2 rounded-xl font-semibold transition-all text-sm md:text-base ${
               importType === 'pools'
                 ? 'bg-blue-600 text-white shadow-lg scale-105'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            🏊 Piscines
+            🏊<span className="block md:inline md:ml-1">Piscines</span>
           </button>
           <button
             onClick={() => setImportType('clients')}
-            className={`py-4 rounded-xl font-semibold transition-all ${
+            className={`py-4 px-2 rounded-xl font-semibold transition-all text-sm md:text-base ${
               importType === 'clients'
                 ? 'bg-blue-600 text-white shadow-lg scale-105'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            👥 Clients
+            👥<span className="block md:inline md:ml-1">Clients</span>
           </button>
         </div>
       </div>
