@@ -115,20 +115,26 @@ export async function POST(
     console.log('✅ Facture proforma créée:', newInvoice.invoice_number);
 
     // 5️⃣ Copier les lignes depuis intervention_items
-    const { data: interventionItems } = await supabase
+    const { data: interventionItems, error: itemsFetchError } = await supabase
       .schema('piscine_delmas_public')
       .from('intervention_items')
-      .select('product_name, quantity, unit_price, subtotal')
+      .select('product_name, quantity, unit_price, unit')
       .eq('intervention_id', interventionId);
 
+    if (itemsFetchError) {
+      console.error('⚠️ Erreur récupération produits:', itemsFetchError);
+    }
+
     if (interventionItems && interventionItems.length > 0) {
+      console.log(`📦 ${interventionItems.length} produits trouvés dans intervention_items`);
+
       const invoiceItems = interventionItems.map(item => ({
         invoice_id: newInvoice.id,
         description: item.product_name,
         quantity: item.quantity,
-        unit_price: item.unit_price,
+        unit_price: item.unit_price || 0,
         tva_rate: 20, // TVA par défaut
-        total: item.subtotal || (item.quantity * item.unit_price),
+        // ✅ Calculer le total manuellement : quantité × prix unitaire
       }));
 
       const { error: itemsError } = await supabase
@@ -138,9 +144,12 @@ export async function POST(
 
       if (itemsError) {
         console.error('⚠️ Erreur copie items:', itemsError);
+        console.log('📋 Données qui ont causé l\'erreur:', invoiceItems);
       } else {
-        console.log(`✅ ${invoiceItems.length} lignes copiées dans la facture`);
+        console.log(`✅ ${invoiceItems.length} produits copiés dans la facture`);
       }
+    } else {
+      console.log('ℹ️ Aucun produit trouvé dans intervention_items pour cette intervention');
     }
 
     return NextResponse.json({
