@@ -139,18 +139,32 @@ function parseLocationData(location: string | null) {
   const parts = location.split(',').map((p: string) => p.trim());
 
   if (parts.length === 1) {
-    // Format simple : "Toulouse" ou "178 Rue..."
+    // Format simple : "Toulouse" ou "178 Rue..." ou "178 rue de l'ancien lavoir 24120 pazayac"
     const singlePart = parts[0];
-    const postalMatch = singlePart.match(/(\d{5})\s+(.+)/);
-    if (postalMatch) {
-      result.postal_code = postalMatch[1];
-      result.city = postalMatch[2];
-    } else if (!/^\d/.test(singlePart) && singlePart.toLowerCase() !== 'france') {
-      // Si ce n'est pas une adresse et pas "France" → c'est la ville
-      result.city = singlePart;
-    } else if (/^\d/.test(singlePart)) {
-      // Commence par un chiffre → probablement une adresse
-      result.address = singlePart;
+
+    // ✅ CORRECTION : Gérer format sans virgules "adresse code_postal ville"
+    // Regex pour capturer: [début jusqu'au code postal] [code postal] [ville]
+    const fullAddressMatch = singlePart.match(/^(.+?)\s+(\d{5})\s+(.+)$/);
+    if (fullAddressMatch) {
+      // Format: "178 rue de l'ancien lavoir 24120 pazayac"
+      result.address = fullAddressMatch[1].trim();
+      result.postal_code = fullAddressMatch[2];
+      result.city = fullAddressMatch[3].trim();
+      console.log('✅ Format détecté (sans virgules):', result);
+    }
+    // Sinon chercher juste code postal + ville
+    else {
+      const postalMatch = singlePart.match(/(\d{5})\s+(.+)/);
+      if (postalMatch) {
+        result.postal_code = postalMatch[1];
+        result.city = postalMatch[2];
+      } else if (!/^\d/.test(singlePart) && singlePart.toLowerCase() !== 'france') {
+        // Si ce n'est pas une adresse et pas "France" → c'est la ville
+        result.city = singlePart;
+      } else if (/^\d/.test(singlePart)) {
+        // Commence par un chiffre → probablement une adresse
+        result.address = singlePart;
+      }
     }
   } else if (parts.length >= 2) {
     // Premier élément = adresse (sauf si c'est juste une ville)
