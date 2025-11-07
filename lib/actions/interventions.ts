@@ -25,6 +25,26 @@ export const getIntervention = cache(async (id: string) => {
     return null;
   }
 
+  // ✅ FIX PROFESSIONNEL : Récupérer les VRAIS totaux depuis la facture
+  // La facture calcule correctement, l'intervention non
+  const { data: invoice } = await supabase
+    .schema('piscine_delmas_compta')
+    .from('invoices')
+    .select('id, subtotal_ht, total_tva, total_ttc, tax_amount')
+    .eq('intervention_id', id)
+    .maybeSingle();
+
+  // Si une facture existe, utiliser SES totaux (corrects : 312€ au lieu de 36€)
+  if (invoice) {
+    return {
+      ...data,
+      subtotal: invoice.subtotal_ht,
+      tax_amount: invoice.tax_amount || invoice.total_tva,
+      total_ttc: invoice.total_ttc,
+      invoice_id: invoice.id
+    };
+  }
+
   return data;
 });
 
