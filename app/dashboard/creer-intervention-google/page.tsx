@@ -141,20 +141,20 @@ export default function CreerInterventionGooglePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-purple-600 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-purple-600 p-3 sm:p-6">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
+        <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-2">
             🏊 Créer une Intervention
           </h1>
-          <p className="text-center text-gray-600 mb-8">
+          <p className="text-sm sm:text-base text-center text-gray-600 mb-6 sm:mb-8">
             Piscine Delmas - Google Calendar
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Date et heure */}
             <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b-2 border-gray-200">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 pb-2 border-b-2 border-gray-200">
                 📅 Quand ?
               </h2>
 
@@ -201,7 +201,7 @@ export default function CreerInterventionGooglePage() {
 
             {/* Client */}
             <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b-2 border-gray-200">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 pb-2 border-b-2 border-gray-200">
                 👤 Client
               </h2>
 
@@ -219,7 +219,7 @@ export default function CreerInterventionGooglePage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Téléphone
@@ -263,7 +263,7 @@ export default function CreerInterventionGooglePage() {
 
             {/* Types d'intervention */}
             <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b-2 border-gray-200">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 pb-2 border-b-2 border-gray-200">
                 🏷️ Type(s) d'intervention *
               </h2>
 
@@ -291,7 +291,7 @@ export default function CreerInterventionGooglePage() {
 
             {/* Technicien */}
             <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b-2 border-gray-200">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 pb-2 border-b-2 border-gray-200">
                 ⚙️ Technicien
               </h2>
 
@@ -326,17 +326,17 @@ export default function CreerInterventionGooglePage() {
             {/* Bouton */}
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-purple-600 to-purple-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:from-purple-700 hover:to-purple-600 transition-all transform hover:-translate-y-1"
+              className="w-full bg-gradient-to-r from-purple-600 to-purple-500 text-white py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg hover:from-purple-700 hover:to-purple-600 transition-all transform hover:-translate-y-1"
             >
-              📅 Créer l'événement Google Calendar
+              📅 <span className="hidden sm:inline">Créer l'événement</span><span className="sm:hidden">Créer</span> Google Calendar
             </button>
           </form>
 
           {/* Prévisualisation */}
           {showPreview && (
-            <div className="mt-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-6">
-              <h3 className="font-bold text-gray-900 mb-3">📋 Aperçu de la description</h3>
-              <pre className="bg-white p-4 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap">
+            <div className="mt-4 sm:mt-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-3 sm:p-6">
+              <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-2 sm:mb-3">📋 Aperçu de la description</h3>
+              <pre className="bg-white p-3 sm:p-4 rounded-lg text-xs sm:text-sm overflow-x-auto whitespace-pre-wrap">
                 {generateDescription()}
               </pre>
             </div>
