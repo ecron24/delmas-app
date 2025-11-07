@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
       const hashtags = firstLine.match(/#\s*(\S+)/g) || [];
       console.log('🔍 Hashtags extraits:', hashtags);
 
-      // ✅ Correspondance types Google Calendar → Base de données (SANS devis)
+      // ✅ Correspondance types Google Calendar → Base de données
       const TYPE_MAPPING: { [key: string]: string } = {
         'entretien': 'maintenance',
         'reparation': 'repair',
@@ -261,9 +261,9 @@ export async function POST(request: NextRequest) {
         'installation': 'installation',
         'diagnostic': 'diagnostic',
         'urgence': 'emergency',
-        'nettoyage': 'maintenance',
-        'hivernage': 'maintenance',
-        'remise en service': 'maintenance',
+        'nettoyage': 'cleaning',
+        'hivernage': 'winterization',
+        'remise en service': 'startup',
         'autre': 'other',
         'contrôle': 'diagnostic'
       };
@@ -367,6 +367,9 @@ export async function POST(request: NextRequest) {
           'installation': 'Installation',
           'diagnostic': 'Diagnostic',
           'emergency': 'Urgence',
+          'cleaning': 'Nettoyage',
+          'winterization': 'Hivernage',
+          'startup': 'Remise en service',
           'other': 'Autre'
         };
         clientNotes.push(`Type: ${typeLabels[interventionType] || interventionType}`);
@@ -420,23 +423,65 @@ export async function POST(request: NextRequest) {
 
       console.log('📋 Données client à insérer:', clientData);
 
-      const { data: newClient, error: clientError } = await supabase
-        .schema('piscine_delmas_public')
-        .from('clients')
-        .insert(clientData)
-        .select()
-        .single();
+      // ✅ VÉRIFIER SI CLIENT EXISTE DÉJÀ (par téléphone OU par nom)
+      let newClient = null;
 
-      if (clientError || !newClient) {
-        console.error('❌ Erreur création client:', clientError);
-        return NextResponse.json(
-          { error: 'Erreur lors de la création du client', details: clientError },
-          { status: 500 }
-        );
+      // Tentative 1 : Recherche par téléphone (prioritaire)
+      if (clientPhone && /^\d{10}$/.test(clientPhone)) {
+        const { data: existingByPhone } = await supabase
+          .schema('piscine_delmas_public')
+          .from('clients')
+          .select('id, first_name, last_name, reference')
+          .or(`phone.eq.${clientPhone},mobile.eq.${clientPhone}`)
+          .maybeSingle();
+
+        if (existingByPhone) {
+          console.log('✅ Client déjà existant trouvé par téléphone:', existingByPhone);
+          newClient = existingByPhone;
+          clientId = existingByPhone.id;
+          console.log('⏭️ Réutilisation du client existant (par téléphone):', clientId);
+        }
       }
 
-      clientId = newClient.id;
-      console.log(`✅ ${eventType === 'quote' ? 'Prospect' : 'Client'} créé:`, newClient.id);
+      // Tentative 2 : Si pas trouvé par téléphone, chercher par nom + ville
+      if (!newClient && clientName && city) {
+        const { data: existingByName } = await supabase
+          .schema('piscine_delmas_public')
+          .from('clients')
+          .select('id, first_name, last_name, reference, mobile, phone')
+          .ilike('last_name', clientName)
+          .ilike('city', city)
+          .maybeSingle();
+
+        if (existingByName) {
+          console.log('✅ Client déjà existant trouvé par nom+ville:', existingByName);
+          newClient = existingByName;
+          clientId = existingByName.id;
+          console.log('⏭️ Réutilisation du client existant (par nom):', clientId);
+        }
+      }
+
+      // Créer uniquement si client n'existe pas
+      if (!newClient) {
+        const { data: createdClient, error: clientError } = await supabase
+          .schema('piscine_delmas_public')
+          .from('clients')
+          .insert(clientData)
+          .select()
+          .single();
+
+        if (clientError || !createdClient) {
+          console.error('❌ Erreur création client:', clientError);
+          return NextResponse.json(
+            { error: 'Erreur lors de la création du client', details: clientError },
+            { status: 500 }
+          );
+        }
+
+        newClient = createdClient;
+        clientId = createdClient.id;
+        console.log(`✅ ${eventType === 'quote' ? 'Prospect' : 'Client'} créé:`, createdClient.id);
+      }
     }
 
     // 4️⃣ LOGIQUE CONDITIONNELLE : Intervention seulement si pas un devis
@@ -448,7 +493,7 @@ export async function POST(request: NextRequest) {
       const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       const reference = `INT-${year}${month}-${random}`;
 
-      // 5️⃣ Créer l'intervention AVEC technicien et type
+      // 5️⃣ Créer l'intervention SANS intervention_type
       const scheduledDate = parseGoogleCalendarDate(start);
 
       console.log('🔍 Debug dates finales:', {
@@ -457,6 +502,7 @@ export async function POST(request: NextRequest) {
         readableDate: new Date(scheduledDate).toLocaleString('fr-FR')
       });
 
+      // ✅ CORRECTION : Utiliser assigned_to au lieu de technician_id
       const { data: newIntervention, error: interventionError } = await supabase
         .schema('piscine_delmas_public')
         .from('interventions')
@@ -469,8 +515,8 @@ export async function POST(request: NextRequest) {
           gcal_event_id: gcalEventId,
           created_from: 'gcal',
           synced_to_gcal: true,
-          assigned_to: technicianId,        // ✅ AJOUTÉ : Technicien assigné
-          intervention_type: interventionType, // ✅ AJOUTÉ : Type d'intervention
+          assigned_to: technicianId, // ✅ CORRECTION : assigned_to au lieu de technician_id
+          // ❌ SUPPRIMÉ : intervention_type (on utilise la table de liaison)
           labor_hours: null,
           labor_rate: null,
           travel_fee: 0,
@@ -485,6 +531,48 @@ export async function POST(request: NextRequest) {
           { error: 'Erreur lors de la création de l\'intervention', details: interventionError },
           { status: 500 }
         );
+      }
+
+      console.log('🔍 DEBUG - Intervention créée SANS intervention_type:', {
+        id: newIntervention.id,
+        interventionTypeInDB: newIntervention.intervention_type // Doit être null
+      });
+
+      // ✅ CORRECTION : Créer l'entrée dans la table de liaison pour le type
+      if (interventionType) {
+        console.log('🔍 DEBUG - Création junction pour:', {
+          interventionId: newIntervention.id,
+          interventionType: interventionType
+        });
+
+        const { data: junctionData, error: junctionError } = await supabase
+          .schema('piscine_delmas_public')
+          .from('intervention_types_junction')
+          .insert({
+            intervention_id: newIntervention.id,
+            intervention_type: interventionType
+          })
+          .select();
+
+        if (junctionError) {
+          console.error('❌ Erreur création liaison type:', junctionError);
+          console.log('🔍 DEBUG - Détails erreur junction:', junctionError);
+        } else {
+          console.log('✅ Type d\'intervention ajouté dans junction:', junctionData);
+        }
+
+        // ✅ VÉRIFICATION IMMÉDIATE
+        const { data: verifyData, error: verifyError } = await supabase
+          .schema('piscine_delmas_public')
+          .from('intervention_types_junction')
+          .select('*')
+          .eq('intervention_id', newIntervention.id);
+
+        if (verifyError) {
+          console.error('❌ Erreur vérification junction:', verifyError);
+        } else {
+          console.log('🔍 DEBUG - Vérification junction après insertion:', verifyData);
+        }
       }
 
       console.log('✅ Intervention créée:', newIntervention.reference);

@@ -11,6 +11,9 @@ type Intervention = {
   labor_rate: number | null;
   travel_fee: number;
   intervention_types: Array<{ intervention_type: string }>;
+  // ✅ NOUVEAUX : Données de facturation
+  invoice_total?: number | null;
+  has_final_invoice?: boolean;
 };
 
 type InterventionHistoryProps = {
@@ -51,7 +54,10 @@ export function InterventionHistory({ interventions }: InterventionHistoryProps)
   return (
     <div className="space-y-3">
       {interventions.map((intervention) => {
-        const total = (intervention.labor_hours || 0) * (intervention.labor_rate || 0) + (intervention.travel_fee || 0);
+        // ✅ CORRECTION : Utiliser total_ttc qui inclut les produits
+        const displayAmount = intervention.invoice_total || intervention.total_ttc || 0;
+
+        const isFinalInvoice = intervention.has_final_invoice;
 
         return (
           <button
@@ -67,6 +73,11 @@ export function InterventionHistory({ interventions }: InterventionHistoryProps)
                     📅 {new Date(intervention.scheduled_date).toLocaleDateString('fr-FR')}
                   </span>
                   <span className="text-xs md:text-sm">{STATUS_LABELS[intervention.status]}</span>
+                  {isFinalInvoice && (
+                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold">
+                      🧾 Facturée
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -82,11 +93,14 @@ export function InterventionHistory({ interventions }: InterventionHistoryProps)
                 </p>
               </div>
 
-              {/* Prix responsive */}
-              {total > 0 && (
+              {/* Prix avec indicateur de source */}
+              {displayAmount > 0 && (
                 <div className="text-right shrink-0">
                   <p className="text-lg md:text-2xl font-bold text-green-600 whitespace-nowrap">
-                    {total.toFixed(2)}€
+                    {displayAmount.toFixed(2)}€
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {intervention.invoice_total ? 'Facture finale' : 'Estimation'}
                   </p>
                 </div>
               )}

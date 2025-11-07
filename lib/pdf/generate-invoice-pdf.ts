@@ -1,38 +1,28 @@
-import FormData from 'form-data';
+'use server';
 
 const GOTENBERG_URL = process.env.GOTENBERG_URL || 'http://gotenberg:3000/forms/chromium/convert/html';
 
 /**
- * Generate PDF from HTML using Gotenberg
+ * Generate PDF from HTML using Gotenberg (Native FormData)
  * @param html - The HTML content to convert
  * @param filename - Optional filename for the PDF
  * @returns Buffer containing the PDF data
  */
 export async function generatePDFFromHTML(html: string, filename: string = 'document.pdf'): Promise<Buffer> {
   try {
-    // Create form data
+    // ✅ Utiliser FormData natif de Node.js 18+
     const formData = new FormData();
 
-    // Add the HTML file
-    formData.append('files', Buffer.from(html, 'utf-8'), {
-      filename: 'index.html',
-      contentType: 'text/html',
-    });
+    // Créer un Blob à partir du HTML
+    const htmlBlob = new Blob([html], { type: 'text/html' });
 
-    // Gotenberg options (optional)
-    // Uncomment and adjust as needed:
-    // formData.append('marginTop', '0.5');
-    // formData.append('marginBottom', '0.5');
-    // formData.append('marginLeft', '0.5');
-    // formData.append('marginRight', '0.5');
-    // formData.append('paperWidth', '8.27'); // A4 width in inches
-    // formData.append('paperHeight', '11.7'); // A4 height in inches
+    // Ajouter le fichier HTML au FormData
+    formData.append('files', htmlBlob, 'index.html');
 
-    // Call Gotenberg
+    // Appel à Gotenberg
     const response = await fetch(GOTENBERG_URL, {
       method: 'POST',
-      body: formData as any,
-      headers: formData.getHeaders(),
+      body: formData,
     });
 
     if (!response.ok) {
@@ -40,7 +30,7 @@ export async function generatePDFFromHTML(html: string, filename: string = 'docu
       throw new Error(`Gotenberg error (${response.status}): ${errorText}`);
     }
 
-    // Get PDF buffer
+    // Récupérer le buffer PDF
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
 
@@ -54,14 +44,29 @@ export async function generatePDFFromHTML(html: string, filename: string = 'docu
  * Generate invoice PDF from invoice data
  * @param invoiceHTML - The complete HTML for the invoice
  * @param invoiceNumber - Invoice number for filename
+ * @param clientName - Client name for filename (optional)
  * @returns Buffer containing the PDF
  */
-export async function generateInvoicePDF(invoiceHTML: string, invoiceNumber: string): Promise<Buffer> {
+export async function generateInvoicePDF(
+  invoiceHTML: string,
+  invoiceNumber: string,
+  clientName?: string
+): Promise<Buffer> {
   console.log('📄 Generating PDF for invoice:', invoiceNumber);
 
-  const pdfBuffer = await generatePDFFromHTML(invoiceHTML, `Facture_${invoiceNumber}.pdf`);
+  // 🏷️ Nettoyer le nom du client pour le nom de fichier
+  const sanitizedClientName = clientName
+    ? clientName
+        .replace(/[^a-zA-Z0-9\s_-]/g, '')
+        .replace(/\s+/g, '_')
+        .trim()
+    : 'Client';
 
-  console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes');
+  const filename = `Facture_${invoiceNumber}_${sanitizedClientName}.pdf`;
+
+  const pdfBuffer = await generatePDFFromHTML(invoiceHTML, filename);
+
+  console.log('✅ PDF generated successfully:', filename, '- size:', pdfBuffer.length, 'bytes');
 
   return pdfBuffer;
 }

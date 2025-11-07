@@ -15,7 +15,7 @@ export const getIntervention = cache(async (id: string) => {
     .select(`
       *,
       client:clients(*),
-      intervention_types:intervention_types_junction(intervention_type)
+      intervention_types_junction(intervention_type)
     `)
     .eq('id', id)
     .single();

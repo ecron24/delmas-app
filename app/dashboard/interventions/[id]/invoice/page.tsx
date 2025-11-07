@@ -134,9 +134,10 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
         reference: intervention?.reference || 'N/A',
         scheduled_date: intervention?.scheduled_date || '',
         description: intervention?.description || '',
-        duration: intervention?.duration || 0,
-        hourly_rate: intervention?.hourly_rate || 0,
-        travel_fees: intervention?.travel_fees || 0,
+        // ✅ CORRECTION : Utiliser les VRAIS noms de colonnes BDD
+        duration: intervention?.labor_hours || 0,        // labor_hours → duration
+        hourly_rate: intervention?.labor_rate || 0,      // labor_rate → hourly_rate
+        travel_fees: intervention?.travel_fee || 0,      // travel_fee → travel_fees
         intervention_types_junction: []
       },
       invoice_items: itemsData || []

@@ -183,6 +183,7 @@ export function InterventionForm({
           product_name: item.product_name,
           quantity: item.quantity,
           unit: item.unit,
+          unit_price: item.unit_price || 0, // ✅ Ajouté pour afficher les prix
         }));
         setInterventionData(prev => ({
           ...prev,

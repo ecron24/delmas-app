@@ -25,7 +25,10 @@ type Intervention = {
   labor_hours: number | null;
   labor_rate: number | null;
   travel_fee: number;
+  total_ttc: number; // ✅ AJOUT CRITIQUE
   intervention_types: Array<{ intervention_type: string }>;
+  invoice_total?: number | null;
+  has_final_invoice?: boolean;
 };
 
 /**
@@ -42,19 +45,50 @@ export const getClient = cache(async (id: string): Promise<{ client: Client | nu
     .eq('id', id)
     .single();
 
-  const { data: interventionsData } = await supabase
-    .schema('piscine_delmas_public')
-    .from('interventions')
-    .select(`
-      *,
-      intervention_types:intervention_types_junction(intervention_type)
-    `)
-    .eq('client_id', id)
-    .order('scheduled_date', { ascending: false });
+  if (!clientData) {
+    return { client: null, interventions: [] };
+  }
+
+ // ✅ CORRECTION : Revenir à la requête originale mais s'assurer que total_ttc est inclus
+const { data: interventionsData } = await supabase
+  .schema('piscine_delmas_public')
+  .from('interventions')
+  .select(`
+    *,
+    intervention_types:intervention_types_junction(intervention_type)
+  `)
+  .eq('client_id', id)
+  .order('scheduled_date', { ascending: false });
+
+  if (!interventionsData || interventionsData.length === 0) {
+    return { client: clientData, interventions: [] };
+  }
+
+  // Récupérer les factures séparément
+  const interventionIds = interventionsData.map(i => i.id);
+
+  const { data: invoicesData } = await supabase
+    .schema('piscine_delmas_compta')
+    .from('invoices')
+    .select('*')
+    .in('intervention_id', interventionIds)
+    .eq('invoice_type', 'final')
+    .eq('status', 'sent');
+
+  // Associer les factures aux interventions
+  const interventionsWithInvoiceData = interventionsData.map(intervention => {
+    const finalInvoice = invoicesData?.find(inv => inv.intervention_id === intervention.id);
+
+    return {
+      ...intervention,
+      invoice_total: finalInvoice?.total_ttc || null,
+      has_final_invoice: !!finalInvoice
+    };
+  });
 
   return {
     client: clientData,
-    interventions: interventionsData || [],
+    interventions: interventionsWithInvoiceData,
   };
 });
 

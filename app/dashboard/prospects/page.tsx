@@ -55,55 +55,104 @@ export default function ProspectsPage() {
     setLoading(false);
   };
 
-  if (loading) return <div>Chargement des prospects...</div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="text-gray-600">⏳ Chargement des prospects...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Prospects & Devis</h1>
-        <div className="text-sm text-gray-600">
-          {prospects.length} prospect{prospects.length > 1 ? 's' : ''}
+    <div className="p-4 md:p-6">
+      {/* 📱 HEADER RESPONSIVE */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+          🎯 Prospects & Devis
+        </h1>
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold w-fit">
+          <span>{prospects.length}</span>
+          <span>prospect{prospects.length > 1 ? 's' : ''}</span>
         </div>
       </div>
 
-      <div className="grid gap-4">
-        {prospects.map((prospect) => (
-          <div key={prospect.id} className="bg-white p-4 rounded-lg border shadow-sm">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold">
-                  {prospect.first_name} {prospect.last_name}
-                </h3>
-                <p className="text-gray-600">
-                  {prospect.phone || prospect.mobile} • {prospect.city}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Créé le {new Date(prospect.prospect_created_at).toLocaleDateString('fr-FR')}
-                </p>
-              </div>
+      {/* 📱 LISTE PROSPECTS - RESPONSIVE */}
+      {prospects.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-12 text-center">
+          <p className="text-4xl mb-2">🔭</p>
+          <p className="text-gray-600">Aucun prospect trouvé</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 md:gap-4">
+          {prospects.map((prospect) => (
+            <div
+              key={prospect.id}
+              className="bg-white p-4 rounded-xl border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+            >
+              {/* 📱 LAYOUT MOBILE-FIRST */}
+              <div className="flex flex-col gap-3">
+                {/* Ligne 1 : Nom + Badge statut (desktop uniquement) */}
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-900 text-base sm:text-lg truncate">
+                      {prospect.first_name} {prospect.last_name}
+                    </h3>
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <span
-                  className="px-3 py-1 rounded-full text-sm font-medium"
-                  style={{
-                    backgroundColor: prospect.prospect_status?.color + '20',
-                    color: prospect.prospect_status?.color
-                  }}
-                >
-                  {prospect.prospect_status?.name}
-                </span>
+                  {/* 🖥️ Badge desktop uniquement */}
+                  <span
+                    className="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+                    style={{
+                      backgroundColor: prospect.prospect_status?.color + '20',
+                      color: prospect.prospect_status?.color
+                    }}
+                  >
+                    {prospect.prospect_status?.name}
+                  </span>
+                </div>
 
-                <a
-                  href={`/dashboard/prospects/${prospect.id}`}
-                  className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
-                >
-                  Voir
-                </a>
+                {/* Ligne 2 : Infos contact */}
+                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                  <span className="flex items-center gap-1">
+                    📞 {prospect.phone || prospect.mobile}
+                  </span>
+                  <span className="text-gray-300">•</span>
+                  <span className="flex items-center gap-1">
+                    📍 {prospect.city}
+                  </span>
+                </div>
+
+                {/* Ligne 3 : Date + Actions */}
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <p className="text-xs text-gray-500">
+                    Créé le {new Date(prospect.prospect_created_at).toLocaleDateString('fr-FR')}
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    {/* 📱 Badge mobile uniquement */}
+                    <span
+                      className="sm:hidden inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold"
+                      style={{
+                        backgroundColor: prospect.prospect_status?.color + '20',
+                        color: prospect.prospect_status?.color
+                      }}
+                    >
+                      {prospect.prospect_status?.name}
+                    </span>
+
+                    <a
+                      href={`/dashboard/prospects/${prospect.id}`}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors active:scale-95"
+                    >
+                      Voir
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

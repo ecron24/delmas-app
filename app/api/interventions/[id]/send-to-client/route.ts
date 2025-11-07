@@ -60,7 +60,7 @@ export async function POST(
     const { data: intervention, error: interventionError } = await supabase
       .schema('piscine_delmas_public')
       .from('interventions')
-      .select('reference, scheduled_date, description, duration, hourly_rate, travel_fees')
+      .select('reference, scheduled_date, description, labor_hours, labor_rate, travel_fee')
       .eq('id', invoice.intervention_id)
       .single();
 
@@ -192,9 +192,9 @@ export async function POST(
         reference: intervention.reference,
         scheduled_date: intervention.scheduled_date,
         description: intervention.description,
-        duration: intervention.duration,
-        hourly_rate: intervention.hourly_rate,
-        travel_fees: intervention.travel_fees,
+         duration: intervention.labor_hours,
+         hourly_rate: intervention.labor_rate,
+         travel_fees: intervention.travel_fee,
       },
       items: (invoiceItems || []).map(item => ({
         description: item.description,

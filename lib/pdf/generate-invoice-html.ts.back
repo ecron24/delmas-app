@@ -70,142 +70,116 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 
     body {
       font-family: 'Arial', 'Helvetica', sans-serif;
-      font-size: 10pt;
-      line-height: 1.5;
+      font-size: 11pt;
+      line-height: 1.6;
       color: #1f2937;
       background: white;
-      padding: 20px;
-      max-width: 100%;
-      overflow-x: hidden;
+      padding: 40px;
     }
 
     .container {
       max-width: 800px;
       margin: 0 auto;
-      width: 100%;
     }
 
     .header {
       display: flex;
-      flex-wrap: wrap;
       justify-content: space-between;
-      margin-bottom: 30px;
-      padding-bottom: 15px;
+      margin-bottom: 40px;
+      padding-bottom: 20px;
       border-bottom: 3px solid ${companySettings.primary_color};
-      gap: 15px;
-    }
-
-    .header-left {
-      flex: 1;
-      min-width: 250px;
     }
 
     .header-left h1 {
-      font-size: 20pt;
+      font-size: 24pt;
       font-weight: bold;
       color: #111827;
-      margin-bottom: 6px;
-      word-wrap: break-word;
+      margin-bottom: 8px;
     }
 
     .header-left .invoice-number {
-      font-size: 9pt;
+      font-size: 10pt;
       color: #6b7280;
       font-family: monospace;
     }
 
     .header-left .reference {
-      font-size: 8pt;
+      font-size: 9pt;
       color: #6b7280;
     }
 
     .header-right {
       text-align: right;
-      flex: 1;
-      min-width: 200px;
     }
 
     .header-right .company-name {
-      font-size: 12pt;
+      font-size: 14pt;
       font-weight: bold;
       color: #111827;
       margin-bottom: 4px;
     }
 
     .header-right p {
-      font-size: 8pt;
+      font-size: 9pt;
       color: #4b5563;
       line-height: 1.4;
     }
 
     .info-section {
       display: flex;
-      flex-wrap: wrap;
       justify-content: space-between;
-      margin-bottom: 25px;
-      gap: 15px;
+      margin-bottom: 30px;
     }
 
     .info-box {
-      flex: 1;
-      min-width: 200px;
+      width: 48%;
     }
 
     .info-box h3 {
-      font-size: 9pt;
+      font-size: 10pt;
       font-weight: bold;
       color: #111827;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .info-box p {
-      font-size: 8pt;
+      font-size: 9pt;
       color: #4b5563;
       line-height: 1.5;
-      word-wrap: break-word;
     }
 
     .info-box .client-name {
       font-weight: bold;
       color: #111827;
-      font-size: 9pt;
+      font-size: 10pt;
     }
 
     .description-box {
       background: #eff6ff;
-      padding: 12px;
-      border-radius: 6px;
-      margin-bottom: 15px;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
     }
 
     .description-box p {
-      font-size: 8pt;
+      font-size: 9pt;
       color: #1e40af;
       margin: 0;
       white-space: pre-wrap;
-      word-wrap: break-word;
     }
 
     .description-box strong {
       display: block;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
       color: #1e3a8a;
-      font-size: 9pt;
-    }
-
-    /* 📱 TABLE RESPONSIVE */
-    .table-wrapper {
-      width: 100%;
-      overflow-x: auto;
-      margin-bottom: 25px;
     }
 
     table {
       width: 100%;
-      min-width: 500px;
       border-collapse: collapse;
+      margin-bottom: 30px;
     }
 
     thead {
@@ -213,13 +187,13 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     }
 
     thead th {
-      padding: 10px 8px;
+      padding: 12px 10px;
       text-align: left;
-      font-size: 8pt;
+      font-size: 9pt;
       font-weight: bold;
       color: #111827;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.5px;
       border-bottom: 2px solid #d1d5db;
     }
 
@@ -244,10 +218,9 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     }
 
     tbody td {
-      padding: 8px;
-      font-size: 8pt;
+      padding: 10px;
+      font-size: 9pt;
       color: #374151;
-      word-wrap: break-word;
     }
 
     tbody td.center {
@@ -262,148 +235,95 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       font-weight: bold;
     }
 
-    /* 📱 TOTALS RESPONSIVE */
     .totals {
       display: flex;
       justify-content: flex-end;
-      margin-bottom: 25px;
+      margin-bottom: 30px;
     }
 
     .totals-box {
-      width: 100%;
-      max-width: 320px;
+      width: 350px;
     }
 
     .totals-row {
       display: flex;
       justify-content: space-between;
-      padding: 6px 12px;
+      padding: 8px 15px;
       border-bottom: 1px solid #e5e7eb;
-      font-size: 9pt;
+      font-size: 10pt;
     }
 
     .totals-row.final {
       background: #dbeafe;
-      padding: 10px 12px;
+      padding: 12px 15px;
       border: none;
-      border-radius: 6px;
-      margin-top: 6px;
+      border-radius: 8px;
+      margin-top: 8px;
     }
 
     .totals-row.final .label {
-      font-size: 11pt;
+      font-size: 12pt;
       font-weight: bold;
       color: #111827;
     }
 
     .totals-row.final .amount {
-      font-size: 14pt;
+      font-size: 16pt;
       font-weight: bold;
       color: ${companySettings.primary_color};
     }
 
     .notes-section {
-      margin-top: 25px;
-      padding-top: 15px;
+      margin-top: 30px;
+      padding-top: 20px;
       border-top: 2px solid #e5e7eb;
     }
 
     .notes-section h3 {
-      font-size: 10pt;
+      font-size: 11pt;
       font-weight: bold;
       color: #111827;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
 
     .notes-section p {
-      font-size: 8pt;
+      font-size: 9pt;
       color: #4b5563;
       line-height: 1.6;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       white-space: pre-wrap;
-      word-wrap: break-word;
     }
 
     .legal-mentions {
       background: #f9fafb;
-      padding: 10px;
-      border-radius: 5px;
+      padding: 12px;
+      border-radius: 6px;
       border-left: 3px solid #9ca3af;
-      margin-top: 12px;
+      margin-top: 15px;
     }
 
     .legal-mentions p {
-      font-size: 7pt;
+      font-size: 8pt;
       color: #6b7280;
       line-height: 1.5;
     }
 
     .footer {
-      margin-top: 30px;
-      padding-top: 15px;
+      margin-top: 40px;
+      padding-top: 20px;
       border-top: 1px solid #e5e7eb;
       text-align: center;
-      font-size: 7pt;
+      font-size: 8pt;
       color: #9ca3af;
     }
 
     .footer p {
-      margin: 2px 0;
-    }
-
-    /* 📱 MEDIA QUERIES MOBILE */
-    @media screen and (max-width: 600px) {
-      body {
-        padding: 10px;
-        font-size: 9pt;
-      }
-
-      .header-left h1 {
-        font-size: 16pt;
-      }
-
-      .header {
-        flex-direction: column;
-      }
-
-      .header-right {
-        text-align: left;
-      }
-
-      .info-section {
-        flex-direction: column;
-      }
-
-      table {
-        font-size: 7pt;
-      }
-
-      thead th {
-        padding: 6px 4px;
-        font-size: 7pt;
-      }
-
-      tbody td {
-        padding: 6px 4px;
-        font-size: 7pt;
-      }
-
-      .totals-box {
-        max-width: 100%;
-      }
-
-      .totals-row.final .amount {
-        font-size: 12pt;
-      }
+      margin: 3px 0;
     }
 
     @media print {
       body {
-        padding: 15px;
-      }
-
-      .table-wrapper {
-        overflow-x: visible;
+        padding: 20px;
       }
     }
   </style>
@@ -428,7 +348,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
         <p>${companySettings.legal_form} - RCS ${companySettings.rcs_city || ''} ${companySettings.rcs_number}</p>
         ` : ''}
         ${companySettings.share_capital ? `<p>Capital: ${companySettings.share_capital}</p>` : ''}
-        <p style="margin-top: 6px;">📧 ${companySettings.email}</p>
+        <p style="margin-top: 8px;">📧 ${companySettings.email}</p>
         <p>📞 ${companySettings.phone}</p>
         ${companySettings.website ? `<p>🌐 ${companySettings.website}</p>` : ''}
       </div>
@@ -441,14 +361,14 @@ export function generateInvoiceHTML(data: InvoiceData): string {
         <p class="client-name">${clientName}</p>
         <p>${client.address}</p>
         <p>${client.postal_code} ${client.city}</p>
-        <p style="margin-top: 6px;">📧 ${client.email}</p>
+        <p style="margin-top: 8px;">📧 ${client.email}</p>
       </div>
 
       <div class="info-box">
         <p><strong>Date d'émission</strong></p>
         <p>${new Date(invoice.issue_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 
-        <p style="margin-top: 10px;"><strong>Date d'échéance</strong></p>
+        <p style="margin-top: 12px;"><strong>Date d'échéance</strong></p>
         <p>${new Date(invoice.due_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </div>
     </div>
@@ -462,50 +382,48 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     ` : ''}
 
     <!-- ITEMS TABLE -->
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>Désignation</th>
-            <th class="center">Qté</th>
-            <th class="right">P.U. HT</th>
-            <th class="center">TVA</th>
-            <th class="right">Total HT</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${laborHT > 0 ? `
-          <tr class="labor">
-            <td class="bold">🛠️ Main d'œuvre</td>
-            <td class="center">${intervention.duration}h</td>
-            <td class="right">${intervention.hourly_rate?.toFixed(2)}€</td>
-            <td class="center">20%</td>
-            <td class="right bold">${laborHT.toFixed(2)}€</td>
-          </tr>
-          ` : ''}
+    <table>
+      <thead>
+        <tr>
+          <th>Désignation</th>
+          <th class="center">Qté</th>
+          <th class="right">P.U. HT</th>
+          <th class="center">TVA</th>
+          <th class="right">Total HT</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${laborHT > 0 ? `
+        <tr class="labor">
+          <td class="bold">🛠️ Main d'œuvre</td>
+          <td class="center">${intervention.duration}h</td>
+          <td class="right">${intervention.hourly_rate?.toFixed(2)}€</td>
+          <td class="center">20%</td>
+          <td class="right bold">${laborHT.toFixed(2)}€</td>
+        </tr>
+        ` : ''}
 
-          ${travelHT > 0 ? `
-          <tr class="highlight">
-            <td class="bold">🚗 Frais de déplacement</td>
-            <td class="center">1</td>
-            <td class="right">${travelHT.toFixed(2)}€</td>
-            <td class="center">20%</td>
-            <td class="right bold">${travelHT.toFixed(2)}€</td>
-          </tr>
-          ` : ''}
+        ${travelHT > 0 ? `
+        <tr class="highlight">
+          <td class="bold">🚗 Frais de déplacement</td>
+          <td class="center">1</td>
+          <td class="right">${travelHT.toFixed(2)}€</td>
+          <td class="center">20%</td>
+          <td class="right bold">${travelHT.toFixed(2)}€</td>
+        </tr>
+        ` : ''}
 
-          ${items.map(item => `
-          <tr>
-            <td>${item.description}</td>
-            <td class="center">${item.quantity}</td>
-            <td class="right">${item.unit_price.toFixed(2)}€</td>
-            <td class="center">${item.tva_rate}%</td>
-            <td class="right bold">${(item.quantity * item.unit_price).toFixed(2)}€</td>
-          </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
+        ${items.map(item => `
+        <tr>
+          <td>${item.description}</td>
+          <td class="center">${item.quantity}</td>
+          <td class="right">${item.unit_price.toFixed(2)}€</td>
+          <td class="center">${item.tva_rate}%</td>
+          <td class="right bold">${(item.quantity * item.unit_price).toFixed(2)}€</td>
+        </tr>
+        `).join('')}
+      </tbody>
+    </table>
 
     <!-- TOTALS -->
     <div class="totals">

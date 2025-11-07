@@ -25,7 +25,7 @@ type Intervention = {
   intervention_types_junction: Array<{ intervention_type: string }>;
   synced_to_gcal?: boolean;
   created_from?: 'app' | 'gcal';
-  technician_id?: string | null;
+  assigned_to?: string | null; // ✅ Changé de technician_id à assigned_to
 };
 
 export function InterventionCard({ intervention }: { intervention: Intervention }) {
@@ -127,6 +127,19 @@ export function InterventionCard({ intervention }: { intervention: Intervention 
 
   const dateInfo = formatDate(intervention.scheduled_date);
 
+  // ========================================
+  // 👨‍🔧 AFFICHAGE DU TECHNICIEN
+  // ========================================
+  const getTechnicianName = (technicianId: string | null) => {
+    const technicianMapping: { [key: string]: string } = {
+      'a5013451-c24e-4ff4-b50a-e66853e10d50': 'Stéphane',
+      '55159a76-e55d-4964-895e-ee7822954e8e': 'Christophe'
+    };
+    return technicianId ? technicianMapping[technicianId] : null;
+  };
+
+  const technicianName = getTechnicianName(intervention.assigned_to);
+
   return (
     <button
       onClick={() => router.push(`/dashboard/interventions/${intervention.id}`)}
@@ -135,7 +148,7 @@ export function InterventionCard({ intervention }: { intervention: Intervention 
       {/* ========================================
           🚨 BADGES D'ALERTE EN HAUT
           ======================================== */}
-      {((intervention.created_from === 'gcal' && intervention.status === 'scheduled') || !intervention.technician_id) && (
+      {((intervention.created_from === 'gcal' && intervention.status === 'scheduled') || !intervention.assigned_to) && (
         <div className="flex flex-wrap gap-2 mb-3 p-2 bg-gradient-to-r from-blue-50 to-orange-50 rounded-lg border border-blue-200">
           {/* Badge : Intervention à compléter */}
           {intervention.created_from === 'gcal' && intervention.status === 'scheduled' && (
@@ -145,7 +158,7 @@ export function InterventionCard({ intervention }: { intervention: Intervention 
           )}
 
           {/* Badge : Technicien à assigner */}
-          {!intervention.technician_id && (
+          {!intervention.assigned_to && (
             <span className="px-3 py-1.5 bg-orange-100 text-orange-700 text-xs rounded-full font-bold border border-orange-300 flex items-center gap-1">
               🔧 Technicien à assigner
             </span>
@@ -175,6 +188,18 @@ export function InterventionCard({ intervention }: { intervention: Intervention 
           </span>
         </div>
       </div>
+
+      {/* ========================================
+          TECHNICIEN ASSIGNÉ
+          ======================================== */}
+      {technicianName && (
+        <div className="flex items-center gap-2 mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
+          <span className="text-base">👨‍🔧</span>
+          <span className="text-sm font-semibold text-green-800">
+            {technicianName}
+          </span>
+        </div>
+      )}
 
       {/* ========================================
           TYPES D'INTERVENTION
