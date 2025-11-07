@@ -331,12 +331,47 @@ export default async function InterventionDetailPage({ params }: { params: { id:
             </div>
           )}
 
-          {/* ✅ Détails DEPUIS LA FACTURE (valeurs correctes) */}
-          {intervention.invoice_items && intervention.invoice_items.length > 0 ? (
-            <div className="mt-4 pt-4 border-t">
-              <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">Détail de la facturation</h3>
-              <div className="space-y-2">
-                {intervention.invoice_items.map((item: any) => (
+          {/* ✅ Détails COMPLETS : Main d'œuvre + Déplacement + Produits */}
+          <div className="mt-4 pt-4 border-t">
+            <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">Détail de la facturation</h3>
+            <div className="space-y-2">
+              {/* 🛠️ Main d'œuvre */}
+              {intervention.labor_hours > 0 && intervention.labor_rate > 0 && (
+                <div className="flex justify-between items-center p-2 bg-blue-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-blue-900">🛠️ Main d'œuvre</p>
+                    <p className="text-xs text-gray-600">
+                      {intervention.labor_hours}h × {intervention.labor_rate.toFixed(2)}€ HT (TVA 20%)
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-blue-900">
+                      {(intervention.labor_hours * intervention.labor_rate * 1.20).toFixed(2)}€
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 🚗 Frais de déplacement */}
+              {intervention.travel_fee > 0 && (
+                <div className="flex justify-between items-center p-2 bg-orange-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-orange-900">🚗 Frais de déplacement</p>
+                    <p className="text-xs text-gray-600">
+                      1 × {intervention.travel_fee.toFixed(2)}€ HT (TVA 20%)
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-orange-900">
+                      {(intervention.travel_fee * 1.20).toFixed(2)}€
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 📦 Produits depuis invoice_items */}
+              {intervention.invoice_items && intervention.invoice_items.length > 0 && (
+                intervention.invoice_items.map((item: any) => (
                   <div key={item.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">{item.description}</p>
@@ -350,31 +385,10 @@ export default async function InterventionDetailPage({ params }: { params: { id:
                       </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
-              {intervention.labor_hours && (
-                <div>
-                  <p className="text-gray-500 text-xs sm:text-sm font-semibold">Durée</p>
-                  <p className="text-gray-900 text-sm sm:text-base font-bold">{intervention.labor_hours}h</p>
-                </div>
-              )}
-              {intervention.labor_rate && (
-                <div>
-                  <p className="text-gray-500 text-xs sm:text-sm font-semibold">Taux horaire</p>
-                  <p className="text-gray-900 text-sm sm:text-base font-bold">{intervention.labor_rate}€/h</p>
-                </div>
-              )}
-              {intervention.travel_fee > 0 && (
-                <div>
-                  <p className="text-gray-500 text-xs sm:text-sm font-semibold">Frais déplacement</p>
-                  <p className="text-gray-900 text-sm sm:text-base font-bold">{intervention.travel_fee}€</p>
-                </div>
+                ))
               )}
             </div>
-          )}
+          </div>
 
           {/* Total */}
           {intervention.total_ttc > 0 && (
