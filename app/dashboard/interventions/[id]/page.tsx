@@ -331,34 +331,71 @@ export default async function InterventionDetailPage({ params }: { params: { id:
             </div>
           )}
 
-          {/* Détails */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
-            {intervention.labor_hours && (
-              <div>
-                <p className="text-gray-500 text-xs sm:text-sm font-semibold">Durée</p>
-                <p className="text-gray-900 text-sm sm:text-base font-bold">{intervention.labor_hours}h</p>
+          {/* ✅ Détails DEPUIS LA FACTURE (valeurs correctes) */}
+          {intervention.invoice_items && intervention.invoice_items.length > 0 ? (
+            <div className="mt-4 pt-4 border-t">
+              <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">Détail de la facturation</h3>
+              <div className="space-y-2">
+                {intervention.invoice_items.map((item: any) => (
+                  <div key={item.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900">{item.description}</p>
+                      <p className="text-xs text-gray-500">
+                        {item.quantity} × {item.unit_price.toFixed(2)}€ HT (TVA {item.tva_rate}%)
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-gray-900">
+                        {(item.quantity * item.unit_price * (1 + item.tva_rate / 100)).toFixed(2)}€
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
-            {intervention.labor_rate && (
-              <div>
-                <p className="text-gray-500 text-xs sm:text-sm font-semibold">Taux horaire</p>
-                <p className="text-gray-900 text-sm sm:text-base font-bold">{intervention.labor_rate}€/h</p>
-              </div>
-            )}
-            {intervention.travel_fee > 0 && (
-              <div>
-                <p className="text-gray-500 text-xs sm:text-sm font-semibold">Frais déplacement</p>
-                <p className="text-gray-900 text-sm sm:text-base font-bold">{intervention.travel_fee}€</p>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+              {intervention.labor_hours && (
+                <div>
+                  <p className="text-gray-500 text-xs sm:text-sm font-semibold">Durée</p>
+                  <p className="text-gray-900 text-sm sm:text-base font-bold">{intervention.labor_hours}h</p>
+                </div>
+              )}
+              {intervention.labor_rate && (
+                <div>
+                  <p className="text-gray-500 text-xs sm:text-sm font-semibold">Taux horaire</p>
+                  <p className="text-gray-900 text-sm sm:text-base font-bold">{intervention.labor_rate}€/h</p>
+                </div>
+              )}
+              {intervention.travel_fee > 0 && (
+                <div>
+                  <p className="text-gray-500 text-xs sm:text-sm font-semibold">Frais déplacement</p>
+                  <p className="text-gray-900 text-sm sm:text-base font-bold">{intervention.travel_fee}€</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Total */}
           {intervention.total_ttc > 0 && (
             <div className="mt-6 pt-6 border-t">
-              <div className="flex items-center justify-between">
-                <span className="text-base sm:text-lg font-bold text-gray-900">TOTAL</span>
-                <span className="text-2xl sm:text-3xl font-bold text-green-600">{intervention.total_ttc.toFixed(2)}€</span>
+              <div className="flex flex-col gap-2">
+                {intervention.subtotal > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Sous-total HT</span>
+                    <span className="font-semibold text-gray-900">{intervention.subtotal.toFixed(2)}€</span>
+                  </div>
+                )}
+                {intervention.tax_amount > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">TVA</span>
+                    <span className="font-semibold text-gray-900">{intervention.tax_amount.toFixed(2)}€</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <span className="text-base sm:text-lg font-bold text-gray-900">TOTAL TTC</span>
+                  <span className="text-2xl sm:text-3xl font-bold text-green-600">{intervention.total_ttc.toFixed(2)}€</span>
+                </div>
               </div>
             </div>
           )}
