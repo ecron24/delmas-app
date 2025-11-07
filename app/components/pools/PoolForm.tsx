@@ -177,7 +177,7 @@ export function PoolForm({ onPoolData, initialData }: PoolFormProps) {
         <label className="block text-sm font-semibold text-gray-700 mb-2">
           Volume (m³)
         </label>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="number"
             step="0.1"
@@ -190,7 +190,7 @@ export function PoolForm({ onPoolData, initialData }: PoolFormProps) {
           <button
             type="button"
             onClick={calculateVolume}
-            className="px-4 py-4 bg-blue-100 text-blue-700 rounded-xl font-semibold hover:bg-blue-200 transition-colors"
+            className="w-full sm:w-auto px-4 py-4 bg-blue-100 text-blue-700 rounded-xl font-semibold hover:bg-blue-200 transition-colors"
           >
             🔢 Calculer
           </button>
