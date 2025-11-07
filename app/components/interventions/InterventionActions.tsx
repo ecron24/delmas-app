@@ -155,6 +155,34 @@ export function InterventionActions({
     }
   };
 
+  // 🧾 NOUVELLE FONCTION : Créer la facture proforma manuellement
+  const handleCreateInvoice = async () => {
+    setInvoiceLoading(true);
+
+    try {
+      const response = await fetch(`/api/interventions/${interventionId}/create-invoice`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        console.log('✅ Facture créée:', data.invoice);
+        // Recharger les infos de la facture
+        await checkInvoiceStatus();
+        // Rediriger vers la page de facture
+        router.push(`/dashboard/interventions/${interventionId}/invoice`);
+      } else {
+        alert(`❌ Erreur lors de la création de la facture: ${data.error || 'Erreur inconnue'}`);
+        setInvoiceLoading(false);
+      }
+    } catch (error) {
+      console.error('❌ Erreur création facture:', error);
+      alert('❌ Erreur de connexion lors de la création de la facture');
+      setInvoiceLoading(false);
+    }
+  };
+
   // 🧾 NOUVELLE FONCTION : Gérer le bouton facture
   const renderInvoiceButton = () => {
     if (invoiceLoading) {
@@ -169,13 +197,15 @@ export function InterventionActions({
       );
     }
 
-    // CAS 1 : Aucune facture
+    // CAS 1 : Aucune facture → Créer la facture proforma
     if (!invoiceInfo) {
       return (
-        <div className="w-full bg-gray-50 border-2 border-gray-300 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2">
-          <span className="text-2xl">📋</span>
-          <span className="text-gray-600">Facture générée automatiquement</span>
-        </div>
+        <button
+          onClick={handleCreateInvoice}
+          className="w-full bg-gradient-to-r from-purple-600 to-purple-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:from-purple-700 hover:to-purple-600 transition-all flex items-center justify-center gap-2"
+        >
+          📝 Créer facture proforma (modifiable)
+        </button>
       );
     }
 

@@ -250,8 +250,9 @@ export async function POST(request: NextRequest) {
       const lines = description.split('\n');
       const firstLine = lines[0] || '';
 
-      const hashtags = firstLine.match(/#\s*(\S+)/g) || [];
-      console.log('🔍 Hashtags extraits:', hashtags);
+      // ✅ Parser TOUS les hashtags dans TOUTE la description (pas seulement la première ligne)
+      const hashtags = description.match(/#\s*(\S+)/g) || [];
+      console.log('🔍 Hashtags extraits depuis description:', hashtags);
 
       // ✅ Correspondance types Google Calendar → Base de données
       const TYPE_MAPPING: { [key: string]: string } = {
