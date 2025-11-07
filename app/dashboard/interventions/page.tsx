@@ -47,6 +47,7 @@ type Intervention = {
   created_from?: 'app' | 'gcal';
   on_hold_at?: string | null;
   on_hold_reason?: string | null;
+  assigned_to?: string | null;
 };
 
 export default function InterventionsPage() {
