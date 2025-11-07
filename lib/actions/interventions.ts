@@ -30,32 +30,27 @@ export const getIntervention = cache(async (id: string) => {
   const { data: invoice } = await supabase
     .schema('piscine_delmas_compta')
     .from('invoices')
-    .select(`
-      id,
-      subtotal_ht,
-      total_tva,
-      total_ttc,
-      tax_amount,
-      invoice_items:invoice_items(
-        id,
-        description,
-        quantity,
-        unit_price,
-        tva_rate
-      )
-    `)
+    .select('id, subtotal_ht, total_tva, total_ttc, tax_amount')
     .eq('intervention_id', id)
     .maybeSingle();
 
-  // Si une facture existe, utiliser SES totaux (corrects : 312€ au lieu de 36€)
+  // Si une facture existe, récupérer SES totaux ET ses lignes
   if (invoice) {
+    // Récupérer les lignes de facture séparément (pour éviter les problèmes de schéma)
+    const { data: invoiceItems } = await supabase
+      .schema('piscine_delmas_compta')
+      .from('invoice_items')
+      .select('id, description, quantity, unit_price, tva_rate')
+      .eq('invoice_id', invoice.id)
+      .order('id', { ascending: true });
+
     return {
       ...data,
       subtotal: invoice.subtotal_ht,
       tax_amount: invoice.tax_amount || invoice.total_tva,
       total_ttc: invoice.total_ttc,
       invoice_id: invoice.id,
-      invoice_items: invoice.invoice_items || [] // ✅ Ajouter les lignes de facture
+      invoice_items: invoiceItems || [] // ✅ TOUTES les lignes : produits + main d'œuvre + déplacement
     };
   }
 
