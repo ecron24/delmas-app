@@ -118,23 +118,25 @@ export async function POST(
     const { data: interventionItems, error: itemsFetchError } = await supabase
       .schema('piscine_delmas_public')
       .from('intervention_items')
-      .select('product_name, quantity, unit_price, unit')
+      .select('product_name, quantity, unit_price, unit, subtotal, tva_rate')
       .eq('intervention_id', interventionId);
 
     if (itemsFetchError) {
       console.error('⚠️ Erreur récupération produits:', itemsFetchError);
+      console.error('Détails erreur:', itemsFetchError);
     }
 
     if (interventionItems && interventionItems.length > 0) {
       console.log(`📦 ${interventionItems.length} produits trouvés dans intervention_items`);
+      console.log('Détails produits:', JSON.stringify(interventionItems, null, 2));
 
       const invoiceItems = interventionItems.map(item => ({
         invoice_id: newInvoice.id,
         description: item.product_name,
         quantity: item.quantity,
         unit_price: item.unit_price || 0,
-        tva_rate: 20, // TVA par défaut
-        // ✅ Calculer le total manuellement : quantité × prix unitaire
+        tva_rate: item.tva_rate || 20, // TVA depuis intervention_items ou 20% par défaut
+        // Note: La colonne 'total' dans invoice_items sera calculée automatiquement par le trigger
       }));
 
       const { error: itemsError } = await supabase
