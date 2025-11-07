@@ -69,5 +69,36 @@ export const getInterventions = cache(async () => {
     return [];
   }
 
-  return data || [];
+  // ✅ FIX PROFESSIONNEL : Récupérer les totaux depuis les factures pour TOUTES les interventions
+  if (!data || data.length === 0) return [];
+
+  // Récupérer toutes les factures en une seule requête
+  const interventionIds = data.map(i => i.id);
+  const { data: invoices } = await supabase
+    .schema('piscine_delmas_compta')
+    .from('invoices')
+    .select('intervention_id, subtotal_ht, total_tva, total_ttc, tax_amount')
+    .in('intervention_id', interventionIds);
+
+  // Créer un map pour accès rapide
+  const invoiceMap = new Map();
+  if (invoices) {
+    invoices.forEach(inv => {
+      invoiceMap.set(inv.intervention_id, inv);
+    });
+  }
+
+  // Enrichir chaque intervention avec les totaux de sa facture
+  return data.map(intervention => {
+    const invoice = invoiceMap.get(intervention.id);
+    if (invoice) {
+      return {
+        ...intervention,
+        subtotal: invoice.subtotal_ht,
+        tax_amount: invoice.tax_amount || invoice.total_tva,
+        total_ttc: invoice.total_ttc
+      };
+    }
+    return intervention;
+  });
 });
