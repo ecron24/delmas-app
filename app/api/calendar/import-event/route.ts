@@ -246,9 +246,6 @@ export async function POST(request: NextRequest) {
     let interventionType: string | null = null;
     let interventionDescription = '';
 
-    console.log('📥 DEBUG - Description reçue:', description);
-    console.log('📥 DEBUG - Summary reçu:', summary);
-
     if (description) {
       const lines = description.split('\n');
       const firstLine = lines[0] || '';
@@ -256,7 +253,6 @@ export async function POST(request: NextRequest) {
       // ✅ Parser TOUS les hashtags dans TOUTE la description (pas seulement la première ligne)
       const hashtags = description.match(/#\s*(\S+)/g) || [];
       console.log('🔍 Hashtags extraits depuis description:', hashtags);
-      console.log('🔍 DEBUG - Nombre de hashtags:', hashtags.length);
 
       // ✅ Correspondance types Google Calendar → Base de données
       const TYPE_MAPPING: { [key: string]: string } = {
@@ -286,8 +282,6 @@ export async function POST(request: NextRequest) {
         const value = tag.replace(/^#\s*/, '').trim();
         const valueLower = value.toLowerCase();
 
-        console.log(`🔍 DEBUG - Analyse hashtag: "${tag}" → valeur: "${value}" → lowercase: "${valueLower}"`);
-
         // 📞 Téléphone (10 chiffres)
         if (/^\d{10}$/.test(value)) {
           clientPhone = value;
@@ -305,14 +299,9 @@ export async function POST(request: NextRequest) {
         }
         // 👤 Client (tout ce qui reste)
         else if (valueLower !== 'intervention') {
-          console.log(`👤 DEBUG - Ajout au client: "${value}"`);
           parsedValues.push(value);
-        } else {
-          console.log(`⚠️ DEBUG - Ignoré (mot-clé "intervention"): "${value}"`);
         }
       }
-
-      console.log('🔍 DEBUG - Après parsing, technicianId =', technicianId);
 
       // Le premier élément restant = nom du client
       if (parsedValues.length > 0) {
