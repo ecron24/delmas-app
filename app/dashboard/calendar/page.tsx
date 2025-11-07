@@ -213,6 +213,12 @@ export default function CalendarPage() {
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">📅 Calendrier</h1>
         <div className="flex gap-2 w-full sm:w-auto">
           <button
+            onClick={() => router.push('/dashboard/creer-intervention-google')}
+            className="flex-1 sm:flex-none px-3 py-2 md:px-4 md:py-2 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all shadow-lg text-sm"
+          >
+            📅 <span className="hidden sm:inline">Créer RDV</span>
+          </button>
+          <button
             onClick={() => router.push('/dashboard/interventions/new')}
             className="flex-1 sm:flex-none px-3 py-2 md:px-4 md:py-2 bg-secondary text-white rounded-xl font-bold hover:bg-secondary-dark transition-all shadow-lg text-sm"
           >
