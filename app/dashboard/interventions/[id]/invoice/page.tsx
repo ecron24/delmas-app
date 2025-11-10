@@ -220,6 +220,7 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
           due_date: dueDate,
           subtotal_ht: totals.subtotal_ht,
           total_tva: totals.total_tva,
+          tax_amount: totals.total_tva,  // ✅ Cohérence : tax_amount = total_tva
           total_ttc: totals.total_ttc,
           notes,
           status: 'draft',
