@@ -1,0 +1,29 @@
+# TEMPLATE IMPORT PRESTATIONS - Delmas Piscine SaaS
+# Instructions: Remplissez les lignes ci-dessous
+# Catégories valides: maintenance, repair, installation, emergency, diagnostic, cleaning, winterization, startup, other
+#
+# Colonnes: nom;categorie;description;duree;prix
+#
+# ========== EXEMPLES (à supprimer après remplissage) ==========
+Nettoyage complet;maintenance;Nettoyage fond parois et ligne eau;2.5;125.00
+Hivernage actif;winterization;Préparation piscine pour hiver avec surveillance;3.0;150.00
+Diagnostic panne;diagnostic;Diagnostic complet équipement et analyse;1.5;75.00
+Changement filtre;maintenance;Remplacement média filtrant sable ou cartouche;2.0;100.00
+Mise en service;startup;Remise en route complète après hivernage;3.0;150.00
+Réparation pompe;repair;Intervention réparation pompe de filtration;2.5;125.00
+Entretien hebdo;maintenance;Entretien hebdomadaire standard;1.0;50.00
+Traitement choc;maintenance;Traitement choc complet avec produits;1.5;75.00
+Réparation fuite;repair;Détection et réparation fuite structure;4.0;200.00
+Installation éclairage LED;installation;Pose spots LED immergés étanches;3.5;175.00
+#
+# ========== VOS PRESTATIONS (ajoutez autant de lignes que nécessaire) ==========
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;
+;;;;

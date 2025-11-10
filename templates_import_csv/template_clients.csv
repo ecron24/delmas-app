@@ -1,0 +1,64 @@
+# TEMPLATE IMPORT CLIENTS - Delmas Piscine SaaS
+# Instructions: Remplissez les lignes ci-dessous
+# Type: particulier ou professionnel
+#
+# Colonnes: type;prenom;nom;entreprise;email;telephone;mobile;adresse;code_postal;ville;notes
+#
+# ========== EXEMPLES (à supprimer après remplissage) ==========
+particulier;Jean;Dupont;;jean.dupont@email.com;0123456789;0612345678;15 rue de la Piscine;75001;Paris;Client depuis 2020
+professionnel;Marie;Martin;Hôtel des Palmiers;contact@hotel.com;0198765432;0687654321;25 avenue de la Plage;06000;Nice;Piscine 15x7m
+particulier;Pierre;Bernard;;pierre.b@email.com;0145678912;;8 impasse du Lac;33000;Bordeaux;
+professionnel;Sophie;Dubois;Camping Les Pins;camping@lespins.fr;0256781234;0623456789;10 chemin des Vacances;40000;Mont-de-Marsan;3 piscines
+particulier;Luc;Moreau;;luc.moreau@email.com;;0634567890;22 allée des Fleurs;13000;Marseille;Piscine 8x4m
+#
+# ========== VOS CLIENTS (50 lignes vides - ajoutez-en plus si nécessaire) ==========
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
