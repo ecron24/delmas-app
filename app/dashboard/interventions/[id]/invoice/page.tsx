@@ -479,10 +479,10 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-lg p-8 print:shadow-none">
-          <div className="flex justify-between mb-8 pb-6 border-b-2">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8 print:shadow-none">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-4 sm:gap-0 mb-6 sm:mb-8 pb-4 sm:pb-6 border-b-2">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-xl sm:text-3xl font-bold text-gray-900 mb-2">
                 {invoice.invoice_type === 'final'
                   ? 'FACTURE FINALE'
                   : invoice.invoice_type === 'proforma'
@@ -490,8 +490,8 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
                     : 'FACTURE'
                 }
               </h1>
-              <p className="text-sm text-gray-600 font-mono">{invoice.invoice_number}</p>
-              <p className="text-sm text-gray-600">Intervention : {invoice.intervention.reference}</p>
+              <p className="text-xs sm:text-sm text-gray-600 font-mono">{invoice.invoice_number}</p>
+              <p className="text-xs sm:text-sm text-gray-600">Intervention : {invoice.intervention.reference}</p>
 
               <div className="flex flex-wrap gap-1 mt-2">
                 {invoice.intervention.intervention_types_junction?.map((t: any, i: number) => (
@@ -502,41 +502,41 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
               </div>
             </div>
 
-            <div className="text-right">
-              <p className="font-bold text-lg text-gray-900 mb-1">
+            <div className="sm:text-right">
+              <p className="font-bold text-base sm:text-lg text-gray-900 mb-1">
                 {companySettings?.company_name || 'PISCINE DELMAS'}
               </p>
-              <p className="text-sm text-gray-600">{companySettings?.company_address || 'Le bois Simon (les linguettes)'}</p>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-gray-600">{companySettings?.company_address || 'Le bois Simon (les linguettes)'}</p>
+              <p className="text-xs sm:text-sm text-gray-600">
                 {companySettings?.company_postal_code || '24370'} {companySettings?.company_city || 'Pechs de l\'esperance'}
               </p>
-              <p className="text-sm text-gray-600">SIRET: {companySettings?.siret || '483 093 118'}</p>
-              <p className="text-sm text-gray-600">TVA: {companySettings?.tva_number || 'FR38483093118'}</p>
+              <p className="text-xs sm:text-sm text-gray-600">SIRET: {companySettings?.siret || '483 093 118'}</p>
+              <p className="text-xs sm:text-sm text-gray-600">TVA: {companySettings?.tva_number || 'FR38483093118'}</p>
               {companySettings?.legal_form && companySettings?.rcs_number && (
-                <p className="text-sm text-gray-600">
+                <p className="text-xs sm:text-sm text-gray-600">
                   {companySettings.legal_form} - RCS {companySettings.rcs_city || ''} {companySettings.rcs_number}
                 </p>
               )}
               {companySettings?.share_capital && (
-                <p className="text-sm text-gray-600">Capital: {companySettings.share_capital}</p>
+                <p className="text-xs sm:text-sm text-gray-600">Capital: {companySettings.share_capital}</p>
               )}
-              <p className="text-sm text-gray-600 mt-2">📧 {companySettings?.email || 'contact@piscine-delmas.fr'}</p>
-              <p className="text-sm text-gray-600">📞 {companySettings?.phone || '06 87 84 24 99'}</p>
+              <p className="text-xs sm:text-sm text-gray-600 mt-2">📧 {companySettings?.email || 'contact@piscine-delmas.fr'}</p>
+              <p className="text-xs sm:text-sm text-gray-600">📞 {companySettings?.phone || '06 87 84 24 99'}</p>
               {companySettings?.website && (
-                <p className="text-sm text-gray-600">🌐 {companySettings.website}</p>
+                <p className="text-xs sm:text-sm text-gray-600">🌐 {companySettings.website}</p>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
             <div>
-              <h3 className="font-bold text-gray-900 mb-3">FACTURÉ À</h3>
-              <p className="font-semibold text-gray-900">{clientName}</p>
-              <p className="text-sm text-gray-600">{invoice.client.address}</p>
-              <p className="text-sm text-gray-600">
+              <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3">FACTURÉ À</h3>
+              <p className="font-semibold text-sm sm:text-base text-gray-900">{clientName}</p>
+              <p className="text-xs sm:text-sm text-gray-600">{invoice.client.address}</p>
+              <p className="text-xs sm:text-sm text-gray-600">
                 {invoice.client.postal_code} {invoice.client.city}
               </p>
-              <p className="text-sm text-gray-600 mt-2">📧 {invoice.client.email}</p>
+              <p className="text-xs sm:text-sm text-gray-600 mt-2">📧 {invoice.client.email}</p>
             </div>
 
             <div>
@@ -587,28 +587,28 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
             </div>
           )}
 
-          <div className="mb-8">
-            <table className="w-full">
+          <div className="mb-6 sm:mb-8 overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="bg-gray-100 border-b-2 border-gray-300">
-                  <th className="text-left py-3 px-4 font-bold">Désignation</th>
-                  <th className="text-center py-3 px-4 font-bold w-24">Qté</th>
-                  <th className="text-right py-3 px-4 font-bold w-32">P.U. HT</th>
-                  <th className="text-center py-3 px-4 font-bold w-24">TVA</th>
-                  <th className="text-right py-3 px-4 font-bold w-32">Total HT</th>
-                  {isEditable && <th className="w-12"></th>}
+                  <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-bold text-xs sm:text-sm">Désignation</th>
+                  <th className="text-center py-2 sm:py-3 px-2 sm:px-4 font-bold text-xs sm:text-sm w-16 sm:w-24">Qté</th>
+                  <th className="text-right py-2 sm:py-3 px-2 sm:px-4 font-bold text-xs sm:text-sm w-20 sm:w-32">P.U. HT</th>
+                  <th className="text-center py-2 sm:py-3 px-2 sm:px-4 font-bold text-xs sm:text-sm w-16 sm:w-24">TVA</th>
+                  <th className="text-right py-2 sm:py-3 px-2 sm:px-4 font-bold text-xs sm:text-sm w-20 sm:w-32">Total HT</th>
+                  {isEditable && <th className="w-10 sm:w-12"></th>}
                 </tr>
               </thead>
               <tbody>
                 {invoice.intervention.duration > 0 && (
                   <tr className="border-b border-gray-200 bg-blue-50">
-                    <td className="py-3 px-4 font-semibold text-blue-900">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 font-semibold text-blue-900 text-xs sm:text-sm">
                       🛠️ Main d'œuvre
                     </td>
-                    <td className="py-3 px-4 text-center">{invoice.intervention.duration}h</td>
-                    <td className="py-3 px-4 text-right">{invoice.intervention.hourly_rate}€</td>
-                    <td className="py-3 px-4 text-center">20%</td>
-                    <td className="py-3 px-4 text-right font-semibold text-blue-900">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-xs sm:text-sm">{invoice.intervention.duration}h</td>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">{invoice.intervention.hourly_rate}€</td>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-xs sm:text-sm">20%</td>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-semibold text-blue-900 text-xs sm:text-sm">
                       {totals.labor?.ht.toFixed(2)}€
                     </td>
                     {isEditable && <td></td>}
@@ -617,13 +617,13 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
 
                 {invoice.intervention.travel_fees > 0 && (
                   <tr className="border-b border-gray-200 bg-orange-50">
-                    <td className="py-3 px-4 font-semibold text-orange-900">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 font-semibold text-orange-900 text-xs sm:text-sm">
                       🚗 Frais de déplacement
                     </td>
-                    <td className="py-3 px-4 text-center">1</td>
-                    <td className="py-3 px-4 text-right">{invoice.intervention.travel_fees}€</td>
-                    <td className="py-3 px-4 text-center">20%</td>
-                    <td className="py-3 px-4 text-right font-semibold text-orange-900">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-xs sm:text-sm">1</td>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">{invoice.intervention.travel_fees}€</td>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-xs sm:text-sm">20%</td>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-semibold text-orange-900 text-xs sm:text-sm">
                       {totals.travel?.ht.toFixed(2)}€
                     </td>
                     {isEditable && <td></td>}
@@ -632,51 +632,51 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
 
                 {items.map((item, index) => (
                   <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="py-3 px-4">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4">
                       {isEditable ? (
                         <input
                           type="text"
                           value={item.description}
                           onChange={(e) => handleUpdateItem(index, 'description', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
+                          className="w-full px-2 py-1 text-xs sm:text-sm border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
                           placeholder="Description..."
                         />
                       ) : (
-                        <span className="text-gray-900">{item.description}</span>
+                        <span className="text-gray-900 text-xs sm:text-sm">{item.description}</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-center">
                       {isEditable ? (
                         <input
                           type="number"
                           value={item.quantity}
                           onChange={(e) => handleUpdateItem(index, 'quantity', parseFloat(e.target.value))}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-center focus:border-blue-500 focus:outline-none"
+                          className="w-full px-2 py-1 text-xs sm:text-sm border border-gray-300 rounded text-center focus:border-blue-500 focus:outline-none"
                           step="0.01"
                         />
                       ) : (
-                        <span className="text-gray-900">{item.quantity}</span>
+                        <span className="text-gray-900 text-xs sm:text-sm">{item.quantity}</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-right">
                       {isEditable ? (
                         <input
                           type="number"
                           value={item.unit_price}
                           onChange={(e) => handleUpdateItem(index, 'unit_price', parseFloat(e.target.value))}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-right focus:border-blue-500 focus:outline-none"
+                          className="w-full px-2 py-1 text-xs sm:text-sm border border-gray-300 rounded text-right focus:border-blue-500 focus:outline-none"
                           step="0.01"
                         />
                       ) : (
-                        <span className="text-gray-900">{item.unit_price.toFixed(2)}€</span>
+                        <span className="text-gray-900 text-xs sm:text-sm">{item.unit_price.toFixed(2)}€</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-center">
                       {isEditable ? (
                         <select
                           value={item.tva_rate}
                           onChange={(e) => handleUpdateItem(index, 'tva_rate', parseFloat(e.target.value))}
-                          className="w-full px-2 py-1 border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
+                          className="w-full px-2 py-1 text-xs sm:text-sm border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
                         >
                           <option value="0">0%</option>
                           <option value="5.5">5.5%</option>
@@ -684,19 +684,19 @@ export default function InvoiceEditPage({ params }: { params: { id: string } }) 
                           <option value="20">20%</option>
                         </select>
                       ) : (
-                        <span className="text-gray-900">{item.tva_rate}%</span>
+                        <span className="text-gray-900 text-xs sm:text-sm">{item.tva_rate}%</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-right font-semibold text-gray-900">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-semibold text-gray-900 text-xs sm:text-sm">
                       {(item.quantity * item.unit_price).toFixed(2)}€
                     </td>
                     {isEditable && (
-                      <td className="py-3 px-4">
+                      <td className="py-2 sm:py-3 px-2 sm:px-4">
                         <button
                           onClick={() => handleRemoveItem(index)}
                           className="text-red-600 hover:text-red-700 p-1"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                         </button>
                       </td>
                     )}
