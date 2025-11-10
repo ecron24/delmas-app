@@ -1,0 +1,27 @@
+# TEMPLATE IMPORT PRODUITS - Delmas Piscine SaaS
+# Instructions: Remplissez les lignes ci-dessous, supprimez les lignes de commentaire (#)
+# Format: point-virgule (;) comme séparateur
+# IMPORTANT: Récupérez d'abord vos IDs de catégories dans /dashboard/admin/categories
+#
+# Colonnes: nom;reference;category_id;prix;unite;description
+#
+# ========== EXEMPLES (à supprimer après remplissage) ==========
+Chlore choc 5kg;CHLORE-001;REMPLACER-PAR-UUID-CATEGORIE;45.00;kg;Désinfectant rapide action choc
+pH minus 1L;PH-002;REMPLACER-PAR-UUID-CATEGORIE;12.00;L;Réducteur pH pour eau alcaline
+Floculant 5L;FLOC-003;REMPLACER-PAR-UUID-CATEGORIE;28.00;L;Clarifiant eau trouble
+Anti-algues 2L;ALGUE-004;REMPLACER-PAR-UUID-CATEGORIE;22.00;L;Traitement préventif algues
+Bandelettes test;TEST-005;REMPLACER-PAR-UUID-CATEGORIE;15.00;boite;Analyse pH et Chlore 50 bandelettes
+Brosse aspirateur;BROSSE-006;REMPLACER-PAR-UUID-CATEGORIE;35.00;unité;Brosse compatible aspirateur piscine
+Robot nettoyeur;ROBOT-007;REMPLACER-PAR-UUID-CATEGORIE;450.00;unité;Robot électrique autonome fond et parois
+#
+# ========== VOS PRODUITS (ajoutez autant de lignes que nécessaire) ==========
+;;;;;
+;;;;;
+;;;;;
+;;;;;
+;;;;;
+;;;;;
+;;;;;
+;;;;;
+;;;;;
+;;;;;
