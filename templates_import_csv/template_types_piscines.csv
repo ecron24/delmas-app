@@ -1,0 +1,29 @@
+# TEMPLATE IMPORT TYPES PISCINES - Delmas Piscine SaaS
+# Instructions: Remplissez les lignes ci-dessous
+# Volume: volume typique moyen en m³ (optionnel)
+#
+# Colonnes: nom;description;volume
+#
+# ========== EXEMPLES (à supprimer après remplissage) ==========
+Piscine enterrée béton;Construction maçonnée entièrement personnalisable durable;45
+Piscine acier;Installation rapide structure modulaire robuste en kit;35
+Piscine naturelle;Écosystème végétalisé zone baignade équilibrée écologique;60
+Piscine coque polyester;Coque monobloc installation rapide garantie étanchéité;30
+Piscine hors-sol;Installation temporaire ou permanente économique;20
+Piscine bois;Structure bois esthétique intégration naturelle jardin;25
+Piscine couloir nage;Bassin sportif dimensions optimisées natation;40
+Piscine débordement;Système débordement effet miroir luxe esthétique;50
+Bassin biologique;Filtration naturelle plantes lagunage écologique;55
+Piscine intérieure;Bassin couvert chauffé usage annuel confort;35
+#
+# ========== VOS TYPES DE PISCINES (ajoutez autant de lignes que nécessaire) ==========
+;;
+;;
+;;
+;;
+;;
+;;
+;;
+;;
+;;
+;;
