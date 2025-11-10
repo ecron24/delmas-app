@@ -64,7 +64,7 @@ export const getInvoices = cache(async (): Promise<{ invoices: Invoice[]; stats:
     };
   }
 
-  // Charger les interventions associées
+  // Charger les interventions associées AVEC labor_hours, labor_rate, travel_fee
   const interventionIds = data.map(inv => inv.intervention_id);
 
   const { data: interventions } = await supabase
@@ -74,16 +74,78 @@ export const getInvoices = cache(async (): Promise<{ invoices: Invoice[]; stats:
       id,
       reference,
       scheduled_date,
+      labor_hours,
+      labor_rate,
+      travel_fee,
       client:clients(first_name, last_name, company_name, type)
     `)
     .in('id', interventionIds);
 
-  const invoicesWithDetails = data.map(invoice => ({
-    ...invoice,
-    intervention: interventions?.find(i => i.id === invoice.intervention_id),
-  })) as Invoice[];
+  // Récupérer tous les invoice_items en une seule requête
+  const invoiceIds = data.map(inv => inv.id);
+  const { data: allInvoiceItems } = await supabase
+    .schema('piscine_delmas_compta')
+    .from('invoice_items')
+    .select('invoice_id, quantity, unit_price, tva_rate')
+    .in('invoice_id', invoiceIds);
 
-  // Calculer les stats
+  // Grouper les items par invoice_id
+  const itemsByInvoiceId = new Map();
+  if (allInvoiceItems) {
+    allInvoiceItems.forEach(item => {
+      if (!itemsByInvoiceId.has(item.invoice_id)) {
+        itemsByInvoiceId.set(item.invoice_id, []);
+      }
+      itemsByInvoiceId.get(item.invoice_id).push(item);
+    });
+  }
+
+  // ✅ CALCULER les totaux à la volée pour chaque facture
+  const invoicesWithDetails = data.map(invoice => {
+    const intervention = interventions?.find(i => i.id === invoice.intervention_id);
+
+    if (!intervention) {
+      return {
+        ...invoice,
+        intervention: null,
+      };
+    }
+
+    // Calculer le total TTC correct
+    const laborHT = (intervention.labor_hours || 0) * (intervention.labor_rate || 0);
+    const laborTVA = laborHT * 0.20;
+
+    const travelHT = intervention.travel_fee || 0;
+    const travelTVA = travelHT * 0.20;
+
+    const items = itemsByInvoiceId.get(invoice.id) || [];
+    const productsHT = items.reduce((sum, item) =>
+      sum + (item.quantity * item.unit_price), 0
+    );
+    const productsTVA = items.reduce((sum, item) => {
+      const item_ht = item.quantity * item.unit_price;
+      const item_tva = item_ht * (item.tva_rate / 100);
+      return sum + item_tva;
+    }, 0);
+
+    const subtotal_ht = laborHT + travelHT + productsHT;
+    const total_tva = laborTVA + travelTVA + productsTVA;
+    const total_ttc = subtotal_ht + total_tva;
+
+    return {
+      ...invoice,
+      subtotal_ht,
+      total_ttc,
+      intervention: {
+        id: intervention.id,
+        reference: intervention.reference,
+        scheduled_date: intervention.scheduled_date,
+        client: intervention.client,
+      },
+    };
+  }) as Invoice[];
+
+  // Calculer les stats avec les VRAIS totaux
   const stats: InvoiceStats = {
     total: invoicesWithDetails.length,
     sent: invoicesWithDetails.filter(i => i.status === 'sent').length,
