@@ -101,6 +101,9 @@ export const getInvoices = cache(async (): Promise<{ invoices: Invoice[]; stats:
   }
 
   // ✅ CALCULER les totaux à la volée pour chaque facture
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Minuit pour comparaison propre
+
   const invoicesWithDetails = data.map(invoice => {
     const intervention = interventions?.find(i => i.id === invoice.intervention_id);
 
@@ -132,10 +135,18 @@ export const getInvoices = cache(async (): Promise<{ invoices: Invoice[]; stats:
     const total_tva = laborTVA + travelTVA + productsTVA;
     const total_ttc = subtotal_ht + total_tva;
 
+    // ✅ CALCULER le statut "overdue" à la volée
+    // Une facture est en retard si : status = 'sent' ET due_date < aujourd'hui
+    const dueDate = new Date(invoice.due_date);
+    dueDate.setHours(0, 0, 0, 0);
+    const isOverdue = invoice.status === 'sent' && dueDate < today;
+    const calculatedStatus = isOverdue ? 'overdue' : invoice.status;
+
     return {
       ...invoice,
       subtotal_ht,
       total_ttc,
+      status: calculatedStatus as 'draft' | 'sent' | 'paid' | 'overdue', // ✅ Statut calculé
       intervention: {
         id: intervention.id,
         reference: intervention.reference,
