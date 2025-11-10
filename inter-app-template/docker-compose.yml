@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # Backend API Hono
+  inter-api:
+    image: node:20-alpine
+    container_name: inter-api-dev
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3001}
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./inter-api:/app
+      - /app/node_modules
+    networks:
+      - inter-network
+    restart: unless-stopped
+
+  # Frontend Next.js
+  inter-app:
+    image: node:20-alpine
+    container_name: inter-app-dev
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3002}
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3001}
+    ports:
+      - "3001:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - inter-network
+    depends_on:
+      - inter-api
+    restart: unless-stopped
+
+networks:
+  inter-network:
+    driver: bridge
